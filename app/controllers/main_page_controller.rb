@@ -4,6 +4,7 @@ class MainPageController < ApplicationController
 
   def query
     @url_parameters = parse_query params[:query]
-    @deck = make_deck_cells(@url_parameters)
+    @cells = make_deck_cells(@url_parameters)
+    @deck = fit_all_vehicle_onto_deck(@cells.deep_dup, @url_parameters)
   end
 end

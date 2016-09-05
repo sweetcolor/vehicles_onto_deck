@@ -1,3 +1,5 @@
 = @url_parameters
-p lalala
-= @deck
+p sep
+= render partial: 'main_page/deck', locals: { deck: @cells }
+p sep
+= render partial: 'main_page/deck', locals: { deck: @deck }
