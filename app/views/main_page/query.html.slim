@@ -1,5 +1,7 @@
-= @url_parameters
+= @parsed_params
 p sep
 = render partial: 'main_page/deck', locals: { deck: @cells }
 p sep
 = render partial: 'main_page/deck', locals: { deck: @deck }
+p sep
+= @vehicles_count
