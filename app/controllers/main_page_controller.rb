@@ -76,6 +76,7 @@ class MainPageController < ApplicationController
 
   def fit_vehicles_onto_deck
     decks_queue = Queue.new
+    new_decks_queue = Queue.new
     decks_queue.push({ length: 0..@deck.length, width: 0..@deck.first.length })
     vehicles = @parsed_params[:rv]
     until decks_queue.empty? do
@@ -116,6 +117,8 @@ class MainPageController < ApplicationController
           end_cursor = { width: cursor[:width]+veh[:width], length: cursor[:length]+veh[:length] }
         end
       end
+      decks_queue = new_decks_queue
+      new_decks_queue = Queue.new
     end
   end
 
