@@ -176,7 +176,7 @@ class MainPageController < ApplicationController
         (cursor[:width]..end_cursor[:width]-1).each do |j|
           if @deck[i][j][:filled]
             real_end_cursor[:width] = j + 1
-            real_end_cursor[:length] += 1
+            real_end_cursor[:length] = i + 1
             break
           elsif @deck[i][j][:height] < vehicle[:height]
             real_cursor[:width] = j + 1
