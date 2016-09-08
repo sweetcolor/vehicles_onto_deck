@@ -38,7 +38,10 @@ class MainPageController < ApplicationController
   end
 
   def parse_real_vehicle(vehicles)
-    sort_vehicle(vehicles.map { |v| v.split(',') }.map { |a| [a[0].split('%')[1], a[1..3].map { |e| e.to_i }] })
+    sort_vehicle(vehicles.map { |v| v.split(',') }.map do |a|
+      name_splitted = a[0].split('%').keep_if { |v| !v.downcase.start_with? 'v' }
+      [name_splitted[0..-2].map { |n| n[0].downcase }.join + name_splitted[-1], a[1..3].map { |e| e.to_i }]
+    end)
   end
 
   def parse_exception_cells(cells)
@@ -78,14 +81,14 @@ class MainPageController < ApplicationController
     decks_queue = Queue.new
     new_decks_queue = Queue.new
     decks_queue.push({ length: 0..@deck.length, width: 0..@deck.first.length })
-    vehicles = @parsed_params[:rv]
+    inserted_vehicles = @parsed_params[:rv].reduce({}) { |h, v| h[v[:name]] = FALSE; h }
+    vehicles = remove_too_high_vehicle(@parsed_params[:rv])
     until decks_queue.empty? do
       sub_deck = decks_queue.pop
       top_map = Array.new(sub_deck[:width].end+1, 0)
       top_map[-1] = sub_deck[:length].end
       top_map__min = top_map.min
       cursor = { width: sub_deck[:width].begin, length: sub_deck[:width].begin }
-      inserted_vehicles = vehicles.reduce({}) { |h, v| h[v[:name]] = FALSE; h }
       idx = 0
       while idx < vehicles.length do
         veh = vehicles[idx]
@@ -120,6 +123,11 @@ class MainPageController < ApplicationController
       decks_queue = new_decks_queue
       new_decks_queue = Queue.new
     end
+  end
+
+  def remove_too_high_vehicle(vehicles)
+    height_max = [@parsed_params[:stdmax], @parsed_params[:EX].values.max].max
+    vehicles.map { |veh| veh if veh[:height] <= height_max }.compact
   end
 
   def update_cursor(cursor, top_map)
