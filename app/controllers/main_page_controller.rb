@@ -84,13 +84,12 @@ class MainPageController < ApplicationController
       sub_deck = decks_queue.pop
       top_map = Array.new(sub_deck[:width].end+1, 0)
       top_map[-1] = sub_deck[:length].end
-      top_map__min = top_map.min
       cursor = { width: sub_deck[:width].begin, length: sub_deck[:width].begin }
       idx = 0
       while idx < vehicles.length do
         veh = vehicles[idx]
         end_cursor = { width: cursor[:width]+veh[:width], length: cursor[:length]+veh[:length] }
-        is_out_of_range = out_of_range?(veh, sub_deck, top_map__min)
+        is_out_of_range = out_of_range?(veh, sub_deck, top_map.min)
         until inserted_vehicles[veh[:name]] || is_out_of_range do
           real_cursor, real_end_cursor = check_fit_vehicle_onto_deck(veh, sub_deck, end_cursor, cursor)
           if vehicle_fit?(cursor, real_cursor, end_cursor, real_end_cursor)
@@ -113,9 +112,10 @@ class MainPageController < ApplicationController
               update_cursor(cursor, top_map)
             end
           end
-          is_out_of_range = out_of_range?(veh, sub_deck, top_map__min)
+          is_out_of_range = out_of_range?(veh, sub_deck, top_map.min)
           end_cursor = { width: cursor[:width]+veh[:width], length: cursor[:length]+veh[:length] }
         end
+        idx += 1 if is_out_of_range
       end
       decks_queue = new_decks_queue
       new_decks_queue = Queue.new
@@ -128,7 +128,8 @@ class MainPageController < ApplicationController
   end
 
   def update_cursor(cursor, top_map)
-    top_map__index, top_map__min = min_top_map(top_map)
+    top_map__min = top_map.min
+    top_map__index = top_map.index(top_map__min)
     cursor[:length] = top_map__min
     cursor[:width] = top_map__index
   end
@@ -156,12 +157,6 @@ class MainPageController < ApplicationController
 
   def update__top_map(top_map, cursor, end_cursor)
     (cursor[:width]..end_cursor[:width]-1).each { |i| top_map[i] = end_cursor[:length] }
-  end
-
-  def min_top_map(top_map)
-    top_map__min = top_map.min
-    top_map__index = top_map.index(top_map__min)
-    return top_map__index, top_map__min
   end
 
   def check_fit_vehicle_onto_deck(vehicle, deck ,end_cursor, cursor)
