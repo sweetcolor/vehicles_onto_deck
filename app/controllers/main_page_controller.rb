@@ -38,10 +38,7 @@ class MainPageController < ApplicationController
   end
 
   def parse_real_vehicle(vehicles)
-    sort_vehicle(vehicles.map { |v| v.split(',') }.map do |a|
-      name_splitted = a[0].split('%').keep_if { |v| !v.downcase.start_with? 'v' }
-      [name_splitted[0..-2].map { |n| n[0].downcase }.join + name_splitted[-1], a[1..3].map { |e| e.to_i }]
-    end)
+    sort_vehicle(vehicles.map { |v| v.split(',') }.map { |a| [a[0], a[1..3].map { |e| e.to_i }] })
   end
 
   def parse_exception_cells(cells)
