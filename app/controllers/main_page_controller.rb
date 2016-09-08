@@ -89,15 +89,17 @@ class MainPageController < ApplicationController
       while idx < vehicles.length do
         veh = vehicles[idx]
         end_cursor = { width: cursor[:width]+veh[:width], length: cursor[:length]+veh[:length] }
-        is_out_of_range = out_of_range?(veh, sub_deck, top_map.min)
-        until inserted_vehicles[veh[:name]] || is_out_of_range do
+        is_not_enough_free_space = not_enough_free_space?(veh, sub_deck, top_map)
+        until inserted_vehicles[veh[:name]] || is_not_enough_free_space do
           real_cursor, real_end_cursor = check_fit_vehicle_onto_deck(veh, sub_deck, end_cursor, cursor)
           if vehicle_fit?(cursor, real_cursor, end_cursor, real_end_cursor)
             put_vehicle_onto_deck(veh[:name], end_cursor, cursor, top_map)
             inserted_vehicles[veh[:name]] = TRUE
             idx += 1
           else
-            if vehicle_in_pit?(end_cursor, real_end_cursor)
+            if out_of_range?(cursor, sub_deck)
+              update_cursor(cursor, top_map)
+            elsif vehicle_in_pit?(end_cursor, real_end_cursor)
               decks_queue.push(
                   { width: cursor[:width]..real_end_cursor[:width], length: cursor[:length]..real_end_cursor[:length] }
               )
@@ -108,14 +110,15 @@ class MainPageController < ApplicationController
               vehicles[idx], vehicles[idx+1] = vehicles[idx+1], vehicles[idx]
               break
             end
-            if out_of_range?(veh, sub_deck, top_map.min)
+            if not_enough_free_space?(veh, sub_deck, top_map)
               update_cursor(cursor, top_map)
             end
           end
-          is_out_of_range = out_of_range?(veh, sub_deck, top_map.min)
+          is_not_enough_free_space = not_enough_free_space?(veh, sub_deck, top_map)
           end_cursor = { width: cursor[:width]+veh[:width], length: cursor[:length]+veh[:length] }
         end
-        idx += 1 if is_out_of_range
+        update_cursor(cursor, top_map)
+        idx += 1 if is_not_enough_free_space
       end
       decks_queue = new_decks_queue
       new_decks_queue = Queue.new
@@ -143,8 +146,12 @@ class MainPageController < ApplicationController
   #   inserted_vehicles
   # end
 
-  def out_of_range?(vehicle, sub_deck, top_map__min)
-    top_map__min + vehicle[:length] > sub_deck[:length].end
+  def out_of_range?(cursor, sub_deck)
+    cursor[:width] >= sub_deck[:width].end
+  end
+
+  def not_enough_free_space?(vehicle, sub_deck, top_map)
+    top_map.min + vehicle[:length] > sub_deck[:length].end
   end
 
   def vehicle_in_pit?(end_cursor, real_end_cursor)
