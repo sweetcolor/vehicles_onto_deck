@@ -1,4 +1,9 @@
 class MainPageController < ApplicationController
+  def initialize
+    @cursor = { width: 0, length: 0 }
+    @inserted_vehicles = Hash.new
+  end
+
   def index
   end
 
@@ -7,7 +12,8 @@ class MainPageController < ApplicationController
     @cells = make_deck_cells
     @deck = @cells.deep_dup
     @vehicles_count = nil
-    fit_vehicles_onto_deck
+    fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
+    # fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
     # fit_all_vehicles_onto_deck(@parsed_params)
   end
 
@@ -74,55 +80,79 @@ class MainPageController < ApplicationController
     name.downcase.split('').map { |c| c.ord % 'a'.ord }.map.with_index { |pos, i| pos*10**i}.reduce(:+)
   end
 
-  def fit_vehicles_onto_deck
-    decks_queue = Queue.new
+  def fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
+    @decks_queue = Queue.new
     new_decks_queue = Queue.new
-    decks_queue.push({ length: 0..@deck.length, width: 0..@deck.first.length })
-    inserted_vehicles = @parsed_params[:rv].reduce({}) { |h, v| h[v[:name]] = FALSE; h }
-    vehicles = remove_too_high_vehicle(@parsed_params[:rv])
-    until decks_queue.empty? do
-      sub_deck = decks_queue.pop
-      top_map = Array.new(sub_deck[:width].end+1, 0)
-      top_map[-1] = sub_deck[:length].end
-      cursor = { width: sub_deck[:width].begin, length: sub_deck[:width].begin }
+    @decks_queue.push({ length: 0..@deck.length, width: 0..@deck.first.length })
+    @inserted_vehicles = @parsed_params[vehicle_type].reduce(@inserted_vehicles) { |h, v| h[v[:name]] = 0; h }
+    vehicles = remove_too_high_vehicle(@parsed_params[vehicle_type])
+    until @decks_queue.empty? || all_vehicle_inserted? do
+      @sub_deck = @decks_queue.pop
+      @top_map = Array.new(@sub_deck[:width].end+1, 0)
+      @top_map[-1] = @sub_deck[:length].end
+      @cursor = { width: @sub_deck[:width].begin, length: @sub_deck[:width].begin }
       idx = 0
       while idx < vehicles.length do
         veh = vehicles[idx]
-        end_cursor = { width: cursor[:width]+veh[:width], length: cursor[:length]+veh[:length] }
-        is_not_enough_free_space = not_enough_free_space?(veh, sub_deck, top_map)
-        until inserted_vehicles[veh[:name]] || is_not_enough_free_space do
-          real_cursor, real_end_cursor = check_fit_vehicle_onto_deck(veh, sub_deck, end_cursor, cursor)
-          if vehicle_fit?(cursor, real_cursor, end_cursor, real_end_cursor)
-            put_vehicle_onto_deck(veh[:name], end_cursor, cursor, top_map)
-            inserted_vehicles[veh[:name]] = TRUE
-            idx += 1
-          else
-            if out_of_range?(cursor, sub_deck)
-              update_cursor(cursor, top_map)
-            elsif vehicle_in_pit?(end_cursor, real_end_cursor)
-              decks_queue.push(
-                  { width: cursor[:width]..real_end_cursor[:width], length: cursor[:length]..real_end_cursor[:length] }
-              )
-              update__top_map(top_map, cursor, real_end_cursor)
-              update_cursor(cursor, top_map)
-            elsif vehicle_too_high?(cursor, real_cursor)
-              # TODO if vehicles[idx] and vehicles[idx+1] too high
-              vehicles[idx], vehicles[idx+1] = vehicles[idx+1], vehicles[idx]
-              break
-            end
-            if not_enough_free_space?(veh, sub_deck, top_map)
-              update_cursor(cursor, top_map)
-            end
-          end
-          is_not_enough_free_space = not_enough_free_space?(veh, sub_deck, top_map)
-          end_cursor = { width: cursor[:width]+veh[:width], length: cursor[:length]+veh[:length] }
+        @end_cursor = { width: @cursor[:width]+veh[:width], length: @cursor[:length]+veh[:length] }
+        is_not_enough_free_space = not_enough_free_space?(veh)
+        idx, is_not_enough_free_space = vehicle_insert_func.call(idx, is_not_enough_free_space, veh, vehicles)
+        update_cursor
+        if is_not_enough_free_space
+          idx += 1
+          @inserted_vehicles[veh[:name]] -= 1 if @inserted_vehicles[veh[:name]].zero?
         end
-        update_cursor(cursor, top_map)
-        idx += 1 if is_not_enough_free_space
       end
-      decks_queue = new_decks_queue
+      @decks_queue = new_decks_queue
       new_decks_queue = Queue.new
     end
+  end
+
+  def all_vehicle_inserted?
+    @inserted_vehicles.values.all? { |status| !status.zero? }
+  end
+
+  def insert_real_vehicle(idx, is_not_enough_free_space, veh, vehicles)
+    until @inserted_vehicles[veh[:name]] > 0 || is_not_enough_free_space do
+      idx, is_not_enough_free_space = try_insert_vehicle(idx, veh, vehicles)
+    end
+    return idx, is_not_enough_free_space
+  end
+
+  def insert_standard_vehicle(idx, is_not_enough_free_space, veh, vehicles)
+    until is_not_enough_free_space do
+      idx, is_not_enough_free_space = try_insert_vehicle(idx, veh, vehicles)
+    end
+    return idx, is_not_enough_free_space
+  end
+
+  def try_insert_vehicle(idx, veh, vehicles)
+    real_cursor, real_end_cursor = check_fit_vehicle_onto_deck(veh)
+    if vehicle_fit?(real_cursor, real_end_cursor)
+      put_vehicle_onto_deck(veh[:name])
+      @inserted_vehicles[veh[:name]] += 1
+      idx += 1
+    else
+      if out_of_range?
+        update_cursor
+      elsif vehicle_in_pit?(real_end_cursor)
+        @decks_queue.push(
+            {width: @cursor[:width]..real_end_cursor[:width], length: @cursor[:length]..real_end_cursor[:length]}
+        )
+        update__top_map(real_end_cursor)
+        update_cursor
+      elsif vehicle_too_high?(real_cursor)
+        # TODO if vehicles[idx] and vehicles[idx+1] too high
+        vehicles[idx], vehicles[idx+1] = vehicles[idx+1], vehicles[idx]
+        return
+      end
+      if not_enough_free_space?(veh)
+        update_cursor
+      end
+    end
+    is_not_enough_free_space = not_enough_free_space?(veh)
+    @end_cursor = {width: @cursor[:width]+veh[:width], length: @cursor[:length]+veh[:length]}
+    return idx, is_not_enough_free_space
   end
 
   def remove_too_high_vehicle(vehicles)
@@ -130,50 +160,45 @@ class MainPageController < ApplicationController
     vehicles.map { |veh| veh if veh[:height] <= height_max }.compact
   end
 
-  def update_cursor(cursor, top_map)
-    top_map__min = top_map.min
-    top_map__index = top_map.index(top_map__min)
-    cursor[:length] = top_map__min
-    cursor[:width] = top_map__index
+  def update_cursor
+    top_map__min = @top_map.min
+    top_map__index = @top_map.index(top_map__min)
+    @cursor[:length] = top_map__min
+    @cursor[:width] = top_map__index
   end
 
-  def vehicle_fit?(cursor, real_cursor, end_cursor, real_end_cursor)
-    real_cursor == cursor && end_cursor == real_end_cursor
+  def vehicle_fit?(real_cursor, real_end_cursor)
+    real_cursor == @cursor && @end_cursor == real_end_cursor
   end
 
-  # def try_insert_vehicle(veh, sub_deck, end_cursor, cursor, top_map, decks_queue)
-  #
-  #   inserted_vehicles
-  # end
-
-  def out_of_range?(cursor, sub_deck)
-    cursor[:width] >= sub_deck[:width].end
+  def out_of_range?
+    @cursor[:width] >= @sub_deck[:width].end
   end
 
-  def not_enough_free_space?(vehicle, sub_deck, top_map)
-    top_map.min + vehicle[:length] > sub_deck[:length].end
+  def not_enough_free_space?(vehicle)
+    @top_map.min + vehicle[:length] > @sub_deck[:length].end
   end
 
-  def vehicle_in_pit?(end_cursor, real_end_cursor)
-    real_end_cursor[:width] < end_cursor[:width]
+  def vehicle_in_pit?(real_end_cursor)
+    real_end_cursor[:width] < @end_cursor[:width]
   end
 
-  def vehicle_too_high?(cursor, real_cursor)
-    real_cursor[:width] > cursor[:width]
+  def vehicle_too_high?(real_cursor)
+    real_cursor[:width] > @cursor[:width]
   end
 
-  def update__top_map(top_map, cursor, end_cursor)
-    (cursor[:width]..end_cursor[:width]-1).each { |i| top_map[i] = end_cursor[:length] }
+  def update__top_map(end_cursor)
+    (@cursor[:width]..end_cursor[:width]-1).each { |i| @top_map[i] = end_cursor[:length] }
   end
 
-  def check_fit_vehicle_onto_deck(vehicle, deck ,end_cursor, cursor)
-    real_cursor = { width: cursor[:width], length: cursor[:length] }
-    real_end_cursor = { width: end_cursor[:width], length: end_cursor[:length] }
-    in_length = deck[:length].end >= end_cursor[:length]
-    in_width = deck[:width].end >= end_cursor[:width]
+  def check_fit_vehicle_onto_deck(vehicle)
+    real_cursor = { width: @cursor[:width], length: @cursor[:length] }
+    real_end_cursor = { width: @end_cursor[:width], length: @end_cursor[:length] }
+    in_length = @sub_deck[:length].end >= @end_cursor[:length]
+    in_width = @sub_deck[:width].end >= @end_cursor[:width]
     if in_length && in_width
-      (cursor[:length]..end_cursor[:length]-1).each do |i|
-        (cursor[:width]..end_cursor[:width]-1).each do |j|
+      (@cursor[:length]..@end_cursor[:length]-1).each do |i|
+        (@cursor[:width]..@end_cursor[:width]-1).each do |j|
           if @deck[i][j][:filled]
             real_end_cursor[:width] = j + 1
             real_end_cursor[:length] = i + 1
@@ -186,20 +211,20 @@ class MainPageController < ApplicationController
         end
       end
     else
-      real_end_cursor[:width] = in_width ? end_cursor[:width] : deck[:width].end
-      real_end_cursor[:length] = in_length ? end_cursor[:length] : deck[:length].end
+      real_end_cursor[:width] = in_width ? @end_cursor[:width] : @sub_deck[:width].end
+      real_end_cursor[:length] = in_length ? @end_cursor[:length] : @sub_deck[:length].end
     end
     return real_cursor, real_end_cursor
   end
 
-  def put_vehicle_onto_deck(vehicle_name, end_cursor, cursor, top_map)
-    (cursor[:length]..end_cursor[:length]-1).each do |i|
-      (cursor[:width]..end_cursor[:width]-1).each do |j|
+  def put_vehicle_onto_deck(vehicle_name)
+    (@cursor[:length]..@end_cursor[:length]-1).each do |i|
+      (@cursor[:width]..@end_cursor[:width]-1).each do |j|
         @deck[i][j][:name] = vehicle_name
         @deck[i][j][:filled] = TRUE
       end
     end
-    update__top_map(top_map, cursor, end_cursor)
-    cursor[:width] = end_cursor[:width]
+    update__top_map(@end_cursor)
+    @cursor[:width] = @end_cursor[:width]
   end
 end
