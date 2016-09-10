@@ -135,12 +135,6 @@ class MainPageController < ApplicationController
                                              top_map: set_top_map_for_new_sub_deck(end_cursor, cursor) })
               merged_sub_decks_indexes.add(j)
               merged_sub_decks_indexes.add(idx)
-            # elsif sub_deck_idx[:length].begin - 1 == @new_sub_decks_list[j][:length].end
-            #   merged_length = @new_sub_decks_list[j][:length].begin..sub_deck_idx[j][:length].end
-            #   cursor = get_cursor_from_deck_range(@new_sub_decks_list[j])
-            #   end_cursor = get_end_cursor_from_deck_range(sub_deck_idx)
-            #   merged_sub_decks_list.append({ width: sub_deck_idx[:width], length: merged_length, not_fit: merged_not_fit,
-            #                                  top_map: set_top_map_for_new_sub_deck(end_cursor, cursor) })
             end
           elsif sub_deck_idx[:length] == sub_deck_j[:length]
             if sub_deck_idx[:width].end + 1 == sub_deck_j[:width].begin
@@ -151,21 +145,8 @@ class MainPageController < ApplicationController
                                              top_map: merged_top_map })
               merged_sub_decks_indexes.add(j)
               merged_sub_decks_indexes.add(idx)
-            # elsif sub_deck_idx[:width].begin - 1 == @new_sub_decks_list[j][:width].end
-            #   merged_width = @new_sub_decks_list[j][:width].begin..sub_deck_idx[j][:width].end
-            #   @new_sub_decks_list[j][:top_map].pop
-            #   merged_top_map = @new_sub_decks_list[j][:top_map] + sub_deck_idx[:top_map][sub_deck_idx[:width]]
-            #   merged_sub_decks_list.append({ width: merged_width, length: sub_deck_idx[:length], not_fit: merged_not_fit,
-            #                                  top_map: merged_top_map })
             end
           end
-          # if merged_sub_decks_list.length == appended_sub_decks_count
-          #   merged_sub_decks_list.append(sub_deck_idx)
-            # merged_sub_decks_list.append(sub_deck_j)
-          #   appended_sub_decks_count += 1
-          # else
-          #   appended_sub_decks_count += 1
-          # end
         end
       end
       @new_sub_decks_list.each_with_index do |d, i|
@@ -192,18 +173,18 @@ class MainPageController < ApplicationController
     @inserted_vehicles.values.all? { |status| !status.zero? }
   end
 
-  def insert_real_vehicle(idx, is_not_enough_free_space, veh, vehicles)
-    until @inserted_vehicles[veh[:name]] > 0 || is_not_enough_free_space do
-      idx, is_not_enough_free_space = try_insert_vehicle(idx, veh, vehicles)
+  def insert_real_vehicle(idx, not_enough_space, veh, vehicles)
+    until @inserted_vehicles[veh[:name]] > 0 || not_enough_space do
+      idx, not_enough_space = try_insert_vehicle(idx, veh, vehicles)
     end
-    return idx, is_not_enough_free_space
+    return idx, not_enough_space
   end
 
-  def insert_standard_vehicle(idx, is_not_enough_free_space, veh, vehicles)
-    until is_not_enough_free_space do
-      idx, is_not_enough_free_space = try_insert_vehicle(idx, veh, vehicles)
+  def insert_standard_vehicle(idx, not_enough_space, veh, vehicles)
+    until not_enough_space do
+      idx, not_enough_space = try_insert_vehicle(idx, veh, vehicles)
     end
-    return idx, is_not_enough_free_space
+    return idx, not_enough_space
   end
 
   def try_insert_vehicle(idx, veh, vehicles)
