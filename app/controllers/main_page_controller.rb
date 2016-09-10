@@ -11,10 +11,13 @@ class MainPageController < ApplicationController
     @parsed_params = parse_query
     @cells = make_deck_cells
     @deck = @cells.deep_dup
-    @vehicles_count = nil
+    @decks_queue = Queue.new
+    @new_sub_decks_list = Array.new
+    @top_map = Array.new(@deck.first.length+1, 0)
+    @top_map[-1] = @deck.length
+    @decks_queue.push({ length: 0..@deck.length-1, width: 0..@deck.first.length-1, top_map: @top_map, not_fit: Hash.new })
     fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
-    # fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
-    # fit_all_vehicles_onto_deck(@parsed_params)
+    fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
   end
 
   private
@@ -81,31 +84,108 @@ class MainPageController < ApplicationController
   end
 
   def fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
-    @decks_queue = Queue.new
-    new_decks_queue = Queue.new
-    @decks_queue.push({ length: 0..@deck.length, width: 0..@deck.first.length })
     @inserted_vehicles = @parsed_params[vehicle_type].reduce(@inserted_vehicles) { |h, v| h[v[:name]] = 0; h }
     vehicles = remove_too_high_vehicle(@parsed_params[vehicle_type])
-    until @decks_queue.empty? || all_vehicle_inserted? do
+    is_all_veh_inserted = FALSE
+    until @decks_queue.empty? || is_all_veh_inserted && is_real_vehicle?(vehicle_type) do
       @sub_deck = @decks_queue.pop
-      @top_map = Array.new(@sub_deck[:width].end+1, 0)
-      @top_map[-1] = @sub_deck[:length].end
-      @cursor = { width: @sub_deck[:width].begin, length: @sub_deck[:width].begin }
+      @top_map = @sub_deck[:top_map]
+      update_cursor
       idx = 0
       while idx < vehicles.length do
         veh = vehicles[idx]
-        @end_cursor = { width: @cursor[:width]+veh[:width], length: @cursor[:length]+veh[:length] }
+        if @sub_deck[:not_fit].has_key?(veh[:name])
+          idx += 1
+          next
+        end
+        update_end_cursor(veh)
         is_not_enough_free_space = not_enough_free_space?(veh)
         idx, is_not_enough_free_space = vehicle_insert_func.call(idx, is_not_enough_free_space, veh, vehicles)
+        is_all_veh_inserted = all_vehicle_inserted?
         update_cursor
         if is_not_enough_free_space
           idx += 1
           @inserted_vehicles[veh[:name]] -= 1 if @inserted_vehicles[veh[:name]].zero?
         end
+        if is_all_veh_inserted && is_real_vehicle?(vehicle_type)
+          @new_sub_decks_list.push(@sub_deck)
+        end
       end
-      @decks_queue = new_decks_queue
-      new_decks_queue = Queue.new
+      merge_sub_decks if @new_sub_decks_list.length > 1
+      @new_sub_decks_list.each { |new_sub_deck| @decks_queue.push(new_sub_deck) }
+      @new_sub_decks_list.clear
     end
+  end
+
+  def merge_sub_decks
+    merged_sub_decks_list = Array.new
+    merged_sub_decks_indexes = Set.new
+    begin
+      @new_sub_decks_list.each_with_index do |sub_deck_idx, idx|
+        next if merged_sub_decks_indexes.include?(idx)
+        @new_sub_decks_list.each_with_index do |sub_deck_j, j|
+          next if idx == j
+          merged_not_fit = sub_deck_idx[:not_fit].merge(sub_deck_j[:not_fit])
+          if sub_deck_idx[:width] == sub_deck_j[:width]
+            if sub_deck_idx[:length].end + 1 == sub_deck_j[:length].begin
+              merged_length = sub_deck_idx[:length].begin..sub_deck_j[:length].end
+              cursor = get_cursor_from_deck_range(sub_deck_idx)
+              end_cursor = get_end_cursor_from_deck_range(sub_deck_j)
+              merged_sub_decks_list.append({ width: sub_deck_idx[:width], length: merged_length, not_fit: merged_not_fit,
+                                             top_map: set_top_map_for_new_sub_deck(end_cursor, cursor) })
+              merged_sub_decks_indexes.add(j)
+              merged_sub_decks_indexes.add(idx)
+            # elsif sub_deck_idx[:length].begin - 1 == @new_sub_decks_list[j][:length].end
+            #   merged_length = @new_sub_decks_list[j][:length].begin..sub_deck_idx[j][:length].end
+            #   cursor = get_cursor_from_deck_range(@new_sub_decks_list[j])
+            #   end_cursor = get_end_cursor_from_deck_range(sub_deck_idx)
+            #   merged_sub_decks_list.append({ width: sub_deck_idx[:width], length: merged_length, not_fit: merged_not_fit,
+            #                                  top_map: set_top_map_for_new_sub_deck(end_cursor, cursor) })
+            end
+          elsif sub_deck_idx[:length] == sub_deck_j[:length]
+            if sub_deck_idx[:width].end + 1 == sub_deck_j[:width].begin
+              merged_width = sub_deck_idx[:width].begin..sub_deck_j[:width].end
+              sub_deck_idx[:top_map].pop
+              merged_top_map = sub_deck_idx[:top_map] + sub_deck_j[:top_map][sub_deck_j[:width]]
+              merged_sub_decks_list.append({ width: merged_width, length: sub_deck_idx[:length], not_fit: merged_not_fit,
+                                             top_map: merged_top_map })
+              merged_sub_decks_indexes.add(j)
+              merged_sub_decks_indexes.add(idx)
+            # elsif sub_deck_idx[:width].begin - 1 == @new_sub_decks_list[j][:width].end
+            #   merged_width = @new_sub_decks_list[j][:width].begin..sub_deck_idx[j][:width].end
+            #   @new_sub_decks_list[j][:top_map].pop
+            #   merged_top_map = @new_sub_decks_list[j][:top_map] + sub_deck_idx[:top_map][sub_deck_idx[:width]]
+            #   merged_sub_decks_list.append({ width: merged_width, length: sub_deck_idx[:length], not_fit: merged_not_fit,
+            #                                  top_map: merged_top_map })
+            end
+          end
+          # if merged_sub_decks_list.length == appended_sub_decks_count
+          #   merged_sub_decks_list.append(sub_deck_idx)
+            # merged_sub_decks_list.append(sub_deck_j)
+          #   appended_sub_decks_count += 1
+          # else
+          #   appended_sub_decks_count += 1
+          # end
+        end
+      end
+      @new_sub_decks_list.each_with_index do |d, i|
+        merged_sub_decks_list << d unless merged_sub_decks_indexes.include?(i)
+      end
+      @new_sub_decks_list = merged_sub_decks_list
+      merged_sub_decks_indexes.clear
+    end while merged_sub_decks_indexes.size > 0
+  end
+
+  def get_end_cursor_from_deck_range(sub_deck)
+    { width: sub_deck[:width].end, length: sub_deck[:length].end }
+  end
+
+  def get_cursor_from_deck_range(sub_deck)
+    {width: sub_deck[:width].begin, length: sub_deck[:length].begin}
+  end
+
+  def is_real_vehicle?(curr_veh_type)
+    curr_veh_type == :rv
   end
 
   def all_vehicle_inserted?
@@ -127,17 +207,22 @@ class MainPageController < ApplicationController
   end
 
   def try_insert_vehicle(idx, veh, vehicles)
-    real_cursor, real_end_cursor = check_fit_vehicle_onto_deck(veh)
-    if vehicle_fit?(real_cursor, real_end_cursor)
+    real_cursor, real_end_cursor, in_pit = check_fit_vehicle_onto_deck(veh)
+    if vehicle_fit?(real_cursor, real_end_cursor, in_pit)
       put_vehicle_onto_deck(veh[:name])
       @inserted_vehicles[veh[:name]] += 1
       idx += 1
     else
-      if out_of_range?
+      if out_of_range? || cursor_in_filled_cell?
         update_cursor
-      elsif vehicle_in_pit?(real_end_cursor)
-        @decks_queue.push(
-            {width: @cursor[:width]..real_end_cursor[:width], length: @cursor[:length]..real_end_cursor[:length]}
+      elsif in_pit
+        top_map = set_top_map_for_new_sub_deck(real_end_cursor)
+        width = @cursor[:width]..real_end_cursor[:width]
+        length = @cursor[:length]..real_end_cursor[:length]
+        not_fit = Hash.new
+        not_fit[veh[:name]] = veh
+        @new_sub_decks_list.push(
+            { width: width, length: length, top_map: top_map, not_fit: not_fit }
         )
         update__top_map(real_end_cursor)
         update_cursor
@@ -151,8 +236,24 @@ class MainPageController < ApplicationController
       end
     end
     is_not_enough_free_space = not_enough_free_space?(veh)
-    @end_cursor = {width: @cursor[:width]+veh[:width], length: @cursor[:length]+veh[:length]}
+    update_end_cursor(veh)
     return idx, is_not_enough_free_space
+  end
+
+  def cursor_in_filled_cell?
+    @deck[@cursor[:length]][@cursor[:width]][:filled]
+  end
+
+  def update_end_cursor(veh)
+    @end_cursor = { width: @cursor[:width]+veh[:width]-1, length: @cursor[:length]+veh[:length]-1 }
+  end
+
+  def set_top_map_for_new_sub_deck(real_end_cursor, cursor=nil)
+    cursor = cursor.nil? ? @cursor : cursor
+    top_map = Array.new(real_end_cursor[:width]+2, cursor[:length])
+    cursor[:width].times.each { |i| top_map[i] = real_end_cursor[:length] }
+    top_map[-1] = real_end_cursor[:length]
+    top_map
   end
 
   def remove_too_high_vehicle(vehicles)
@@ -167,12 +268,12 @@ class MainPageController < ApplicationController
     @cursor[:width] = top_map__index
   end
 
-  def vehicle_fit?(real_cursor, real_end_cursor)
-    real_cursor == @cursor && @end_cursor == real_end_cursor
+  def vehicle_fit?(real_cursor, real_end_cursor, in_pit)
+    real_cursor == @cursor && @end_cursor == real_end_cursor && !in_pit
   end
 
   def out_of_range?
-    @cursor[:width] >= @sub_deck[:width].end
+    @cursor[:width] > @sub_deck[:width].end
   end
 
   def not_enough_free_space?(vehicle)
@@ -188,7 +289,7 @@ class MainPageController < ApplicationController
   end
 
   def update__top_map(end_cursor)
-    (@cursor[:width]..end_cursor[:width]-1).each { |i| @top_map[i] = end_cursor[:length] }
+    (@cursor[:width]..end_cursor[:width]).each { |i| @top_map[i] = end_cursor[:length] + 1 }
   end
 
   def check_fit_vehicle_onto_deck(vehicle)
@@ -196,35 +297,38 @@ class MainPageController < ApplicationController
     real_end_cursor = { width: @end_cursor[:width], length: @end_cursor[:length] }
     in_length = @sub_deck[:length].end >= @end_cursor[:length]
     in_width = @sub_deck[:width].end >= @end_cursor[:width]
+    in_pit = FALSE
     if in_length && in_width
-      (@cursor[:length]..@end_cursor[:length]-1).each do |i|
-        (@cursor[:width]..@end_cursor[:width]-1).each do |j|
+      (@cursor[:length]..@end_cursor[:length]).each do |i|
+        (@cursor[:width]..@end_cursor[:width]).each do |j|
           if @deck[i][j][:filled]
-            real_end_cursor[:width] = j + 1
-            real_end_cursor[:length] = i + 1
+            real_end_cursor[:width] = j - 1
+            real_end_cursor[:length] = i
+            in_pit = TRUE
             break
           elsif @deck[i][j][:height] < vehicle[:height]
-            real_cursor[:width] = j + 1
+            real_cursor[:width] = j
             real_cursor[:length] = i
-            return real_cursor, real_end_cursor
+            return real_cursor, real_end_cursor, in_pit
           end
         end
       end
     else
       real_end_cursor[:width] = in_width ? @end_cursor[:width] : @sub_deck[:width].end
       real_end_cursor[:length] = in_length ? @end_cursor[:length] : @sub_deck[:length].end
+      in_pit = TRUE
     end
-    return real_cursor, real_end_cursor
+    return real_cursor, real_end_cursor, in_pit
   end
 
   def put_vehicle_onto_deck(vehicle_name)
-    (@cursor[:length]..@end_cursor[:length]-1).each do |i|
-      (@cursor[:width]..@end_cursor[:width]-1).each do |j|
+    (@cursor[:length]..@end_cursor[:length]).each do |i|
+      (@cursor[:width]..@end_cursor[:width]).each do |j|
         @deck[i][j][:name] = vehicle_name
         @deck[i][j][:filled] = TRUE
       end
     end
     update__top_map(@end_cursor)
-    @cursor[:width] = @end_cursor[:width]
+    @cursor[:width] = @end_cursor[:width] + 1
   end
 end
