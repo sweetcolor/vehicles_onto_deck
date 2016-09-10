@@ -277,7 +277,7 @@ class MainPageController < ApplicationController
   end
 
   def not_enough_free_space?(vehicle)
-    @top_map.min + vehicle[:length] > @sub_deck[:length].end
+    @top_map.min + vehicle[:length] - 1 > @sub_deck[:length].end
   end
 
   def vehicle_in_pit?(real_end_cursor)
