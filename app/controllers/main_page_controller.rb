@@ -16,8 +16,13 @@ class MainPageController < ApplicationController
     @deck = make_deck_cells.deep_dup
     @decks_queue = Queue.new
     @new_sub_decks_list = Array.new
-    @top_map = Array.new(@deck.first.length+1, 0)
-    @top_map[-1] = @deck.length
+    if ul_placement?
+      @top_map = Array.new(@deck.first.length+1, 0)
+      @top_map[-1] = @deck.length
+    else
+      @top_map = Array.new(@deck.length+1, 0)
+      @top_map[-1] = @deck.first.length
+    end
     @decks_queue.push({ length: 0..@deck.length-1, width: 0..@deck.first.length-1, top_map: @top_map, not_fit: Hash.new })
     fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
     fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
@@ -182,14 +187,14 @@ class MainPageController < ApplicationController
     until @inserted_vehicles[veh[:name]] == 1 || not_enough_space do
       idx, not_enough_space = try_insert_vehicle(idx, veh)
     end
-    return idx
+    idx
   end
 
   def insert_standard_vehicle(idx, not_enough_space, veh)
     until not_enough_space do
       idx, not_enough_space = try_insert_vehicle(idx, veh)
     end
-    return idx
+    idx
   end
 
   def try_insert_vehicle(idx, veh)
@@ -262,9 +267,15 @@ class MainPageController < ApplicationController
 
   def set_top_map_for_new_sub_deck(real_end_cursor, cursor=nil)
     cursor = cursor.nil? ? @cursor : cursor
-    top_map = Array.new(real_end_cursor[:width]+2, cursor[:length])
-    cursor[:width].times.each { |i| top_map[i] = real_end_cursor[:length] }
-    top_map[-1] = real_end_cursor[:length]
+    if ul_placement?
+      top_map = Array.new(real_end_cursor[:width]+2, cursor[:length])
+      cursor[:width].times.each { |i| top_map[i] = real_end_cursor[:length] }
+      top_map[-1] = real_end_cursor[:length]
+    else
+      top_map = Array.new(real_end_cursor[:length]+2, cursor[:width])
+      cursor[:length].times.each { |i| top_map[i] = real_end_cursor[:width] }
+      top_map[-1] = real_end_cursor[:width]
+    end
     top_map
   end
 
@@ -276,8 +287,11 @@ class MainPageController < ApplicationController
   def update_cursor
     top_map__min = @top_map.min
     top_map__index = @top_map.index(top_map__min)
-    @cursor[:length] = top_map__min
-    @cursor[:width] = top_map__index
+    if ul_placement?
+      @cursor[:length], @cursor[:width] = top_map__min, top_map__index
+    else
+      @cursor[:length], @cursor[:width] = top_map__index, top_map__min
+    end
   end
 
   def vehicle_fit?(in_pit, too_high)
@@ -285,15 +299,27 @@ class MainPageController < ApplicationController
   end
 
   def out_of_range?
-    @cursor[:width] > @sub_deck[:width].end
+    if ul_placement?
+      @cursor[:width] > @sub_deck[:width].end
+    else
+      @cursor[:length] > @sub_deck[:length].end
+    end
   end
 
   def not_enough_free_space?(vehicle)
-    @top_map.min + vehicle[:length] - 1 > @sub_deck[:length].end
+    if ul_placement?
+      @top_map.min + vehicle[:length] - 1 > @sub_deck[:length].end
+    else
+      @top_map.min + vehicle[:width] - 1 > @sub_deck[:width].end
+    end
   end
 
   def update__top_map(end_cursor)
-    (@cursor[:width]..end_cursor[:width]).each { |i| @top_map[i] = end_cursor[:length] + 1 }
+    if ul_placement?
+      (@cursor[:width]..end_cursor[:width]).each { |i| @top_map[i] = end_cursor[:length] + 1 }
+    else
+      (@cursor[:length]..end_cursor[:length]).each { |i| @top_map[i] = end_cursor[:width] + 1 }
+    end
   end
 
   def check_fit_vehicle_onto_deck(vehicle)
@@ -306,16 +332,23 @@ class MainPageController < ApplicationController
       (@cursor[:length]..@end_cursor[:length]).each do |i|
         (@cursor[:width]..@end_cursor[:width]).each do |j|
           if @deck[i][j][:filled]
-            real_end_cursor[:width] = j - 1
-            real_end_cursor[:length] = i
             in_pit = TRUE
-            break
+            real_end_cursor[:width] = j
+            real_end_cursor[:length] = i
+            if ul_placement?
+              real_end_cursor[:width] -= 1
+              break
+            end
           elsif @deck[i][j][:height] < vehicle[:height]
             real_end_cursor[:width] = j
             real_end_cursor[:length] = i
             too_high = TRUE
             return { real_end_cursor: real_end_cursor, in_pit: in_pit, too_high: too_high  }
           end
+        end
+        if !ul_placement? && in_pit
+          real_end_cursor[:length] -= 1
+          break
         end
       end
     else
@@ -334,6 +367,11 @@ class MainPageController < ApplicationController
       end
     end
     update__top_map(@end_cursor)
-    @cursor[:width] = @end_cursor[:width] + 1
+    update_cursor
+    # @cursor[:width] = @end_cursor[:width] + 1
+  end
+
+  def ul_placement?
+    @parsed_params[:placement] == 'UL'
   end
 end
