@@ -1,5 +1,9 @@
-= @parsed_params
-p sep
+table
+  - @parsed_params.each_pair do |key, item|
+    tr
+      td = key
+      td = item
+p +++++++++++++++++++++++++++++++++++++++++++++++++++
 = @inserted_vehicles
-p sep
+p +++++++++++++++++++++++++++++++++++++++++++++++++++
 = render partial: 'main_page/deck', locals: { deck: @deck }

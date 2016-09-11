@@ -9,8 +9,11 @@ class MainPageController < ApplicationController
 
   def query
     @parsed_params = parse_query
-    @cells = make_deck_cells
-    @deck = @cells.deep_dup
+    @parsed_params[:sort_order] = parse_sort_order
+    @parsed_params[:rv] = parse_real_vehicle
+    @parsed_params[:SV] = parse_standard_vehicle
+    @parsed_params[:EX] = parse_exception_cells
+    @deck = make_deck_cells.deep_dup
     @decks_queue = Queue.new
     @new_sub_decks_list = Array.new
     @top_map = Array.new(@deck.first.length+1, 0)
@@ -36,30 +39,33 @@ class MainPageController < ApplicationController
                                                        val.length == 1 ? val.first : val
                                                      end
     end
-    url_parameters_hash[:rv] = parse_real_vehicle(url_parameters_hash[:rv])
-    url_parameters_hash[:EX] = parse_exception_cells(url_parameters_hash[:EX])
-    url_parameters_hash[:SV] = parse_standard_vehicle(url_parameters_hash)
     url_parameters_hash
   end
 
-  def parse_standard_vehicle(params)
-    create_vehicles_hash(params.select { |k| k =~ /sv/})
+  def parse_standard_vehicle
+    create_vehicles_hash(@parsed_params.select { |k| k =~ /sv/})
   end
 
-  def parse_real_vehicle(vehicles)
-    create_vehicles_hash sort_vehicle(vehicles.map { |v| v.split(',') }.map { |a| [a[0], a[1..3].map { |e| e.to_i }] })
+  def parse_real_vehicle
+    create_vehicles_hash sort_vehicle(@parsed_params[:rv].map { |v| v.split(',') }.map { |a| [a[0], a[1..3].map { |e| e.to_i }] })
   end
 
   def create_vehicles_hash(vehicles_array)
     vehicles_array.map { |a| [:name, :width, :length, :height].zip([a[0], *a[1]]).to_h }
   end
 
-  def sort_vehicle(vehicle)
-    vehicle.sort_by { |a| a[1] }.reverse
+  def parse_sort_order
+    values = { L: -1, W: -1, '1': -1, S: 1, N: 1, '0': 1 }
+    [:width, :length, :height].zip(@parsed_params[:sort_order].map { |order| values[order.to_s.to_sym] }).to_h
   end
 
-  def parse_exception_cells(cells)
-    cells.map.with_index do |cell, i|
+  def sort_vehicle(vehicle)
+    sort = @parsed_params[:sort_order]
+    vehicle.sort_by { |a| [sort[:length]*a[1][0], sort[:width]*a[1][1], sort[:height]*a[1][2]] }
+  end
+
+  def parse_exception_cells
+    @parsed_params[:EX].map.with_index do |cell, i|
       if i.odd?
         cell.to_i
       else
@@ -102,13 +108,14 @@ class MainPageController < ApplicationController
         end
         update_end_cursor(veh)
         is_not_enough_free_space = not_enough_free_space?(veh)
-        idx, is_not_enough_free_space = vehicle_insert_func.call(idx, is_not_enough_free_space, veh)
-        is_all_veh_inserted = all_vehicle_inserted?
-        update_cursor
         if is_not_enough_free_space
           idx += 1
           @inserted_vehicles[veh[:name]] -= 1 if @inserted_vehicles[veh[:name]].zero?
+        else
+          idx = vehicle_insert_func.call(idx, is_not_enough_free_space, veh)
+          update_cursor
         end
+        is_all_veh_inserted = all_vehicle_inserted?
         if is_all_veh_inserted && is_real_vehicle?(vehicle_type)
           @new_sub_decks_list.push(@sub_deck)
         end
@@ -175,14 +182,14 @@ class MainPageController < ApplicationController
     until @inserted_vehicles[veh[:name]] == 1 || not_enough_space do
       idx, not_enough_space = try_insert_vehicle(idx, veh)
     end
-    return idx, not_enough_space
+    return idx
   end
 
   def insert_standard_vehicle(idx, not_enough_space, veh)
     until not_enough_space do
       idx, not_enough_space = try_insert_vehicle(idx, veh)
     end
-    return idx, not_enough_space
+    return idx
   end
 
   def try_insert_vehicle(idx, veh)
