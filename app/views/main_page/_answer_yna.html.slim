@@ -7,8 +7,15 @@
           = name
         - for r in range.keys
           td width="50"
-            | #{r[:width].begin+1}..#{r[:width].end+1}
-          td width="50"
-            | #{r[:length].begin+1}..#{r[:length].end+1}
+            | #{(r[:width].begin+'a'.ord).chr.upcase}#{r[:length].begin+1}..#{(r[:width].end+'a'.ord).chr.upcase}#{r[:length].end+1}
+    - @parsed_params[:SV].each do |veh|
+      tr
+        td width="350"
+          - num = veh[:name].to_s.gsub(/[a-z]/, '')
+          | Additional Standard Vehicles (Type #{num.empty? ? 1 : num.to_i})
+        td width="50"
+          = @inserted_vehicles[veh[:name]]
+        /  - for r in range.keys
+        /| #{(r[:width].begin+'a'.ord).chr.upcase}#{r[:length].begin+1}..#{(r[:width].end+'a'.ord).chr.upcase}#{r[:length].end+1}
 - else
   h3 No they can’t fit
