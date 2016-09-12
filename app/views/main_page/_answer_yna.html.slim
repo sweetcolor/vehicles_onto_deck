@@ -1,0 +1,14 @@
+- if answer
+  h3 yes they can fit, and here are the locations where you can put each vehicle
+  table
+    - @vehicles_location.slice(*@parsed_params[:rv].map { |v| v[:name] }).each_pair do |name, range|
+      tr
+        td width="50"
+          = name
+        - for r in range.keys
+          td width="50"
+            | #{r[:width].begin+1}..#{r[:width].end+1}
+          td width="50"
+            | #{r[:length].begin+1}..#{r[:length].end+1}
+- else
+  h3 No they can’t fit

@@ -1,9 +1,7 @@
-table
-  - @parsed_params.each_pair do |key, item|
-    tr
-      td = key
-      td = item
-p +++++++++++++++++++++++++++++++++++++++++++++++++++
-= @inserted_vehicles
-p +++++++++++++++++++++++++++++++++++++++++++++++++++
-= render partial: 'main_page/deck', locals: { deck: @deck }
+- if @parsed_params[:a].first == 'yn'
+  = render partial: 'main_page/answer_yn', locals: { answer: @answer }
+- if @parsed_params[:a].first == 'yna'
+  = render partial: 'main_page/answer_yna', locals: { answer: @answer }
+- if @parsed_params[:a].first == 'vis'
+  = render partial: 'main_page/answer_vis', locals: { deck: @deck, location: @vehicles_location, row: 0, col: 0,
+        passed_map: Array.new(@deck.length, 0) }

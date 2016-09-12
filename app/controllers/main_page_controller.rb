@@ -14,6 +14,7 @@ class MainPageController < ApplicationController
     @parsed_params[:SV] = parse_standard_vehicle
     @parsed_params[:EX] = parse_exception_cells
     @deck = make_deck_cells.deep_dup
+    @vehicles_location = Hash.new
     @decks_queue = Queue.new
     @new_sub_decks_list = Array.new
     if ul_placement?
@@ -26,6 +27,7 @@ class MainPageController < ApplicationController
     @decks_queue.push({ length: 0..@deck.length-1, width: 0..@deck.first.length-1, top_map: @top_map, not_fit: Hash.new })
     fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
     fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
+    @answer = real_vehicle_can_be_fitted
   end
 
   private
@@ -94,11 +96,8 @@ class MainPageController < ApplicationController
     cells
   end
 
-  def convert_column_name_to_int(name)
-    name.downcase.split('').map { |c| c.ord % 'a'.ord }.map.with_index { |pos, i| pos*10**i}.reduce(:+)
-  end
-
   def fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
+    # @parsed_params[vehicle_type].each { |v| @vehicles_location[v[:name]] = Hash.new }
     @inserted_vehicles = @parsed_params[vehicle_type].reduce(@inserted_vehicles) { |h, v| h[v[:name]] = 0; h }
     @vehicles = remove_too_high_vehicle(@parsed_params[vehicle_type])
     is_all_veh_inserted = FALSE
@@ -198,6 +197,10 @@ class MainPageController < ApplicationController
 
   def all_vehicle_inserted?
     @inserted_vehicles.values.all? { |status| !status.zero? }
+  end
+
+  def real_vehicle_can_be_fitted
+    @inserted_vehicles.slice(*@parsed_params[:rv].map { |v| v[:name] }).values.all? { |s| !s.zero? }
   end
 
   def insert_real_vehicle(idx, not_enough_space, veh)
@@ -385,9 +388,17 @@ class MainPageController < ApplicationController
         @deck[i][j][:filled] = TRUE
       end
     end
+    range = { width: @cursor[:width]..@end_cursor[:width], length: @cursor[:length]..@end_cursor[:length] }
+    @vehicles_location[vehicle_name] = Hash.new unless @vehicles_location.has_key?(vehicle_name)
+    @vehicles_location[vehicle_name][range] = FALSE
+        # @vehicles_location[@cursor[:width]] = Hash.new unless @vehicles_location.has_key?(@cursor[:width])
+    # @vehicles_location[@cursor[:width]][@cursor[:length]] = { width: @cursor[:width] - @end_cursor[:width],
+    #                                                           length: @cursor[:length] - @end_cursor[:length],
+    #                                                           name: vehicle_name, drawn: FALSE }
+    # @vehicles_location[@cursor[:width]] = Hash.new unless @vehicles_location.has_key?(@cursor[:width])
+    # @vehicles_location[@cursor[:width]][@cursor[:length]] = { end_cursor: @end_cursor, name: vehicle_name }
     update__top_map(@end_cursor)
     update_cursor
-    # @cursor[:width] = @end_cursor[:width] + 1
   end
 
   def ul_placement?
