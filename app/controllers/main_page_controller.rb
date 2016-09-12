@@ -52,7 +52,7 @@ class MainPageController < ApplicationController
   end
 
   def parse_real_vehicle
-    create_vehicles_hash sort_vehicle(@parsed_params[:rv].map { |v| v.split(',') }.map { |a| [a[0], a[1..3].map { |e| e.to_i }] })
+    sort_vehicle create_vehicles_hash(@parsed_params[:rv].map { |v| v.split(',') }.map { |a| [a[0], a[1..3].map { |e| e.to_i }] })
   end
 
   def create_vehicles_hash(vehicles_array)
@@ -60,13 +60,15 @@ class MainPageController < ApplicationController
   end
 
   def parse_sort_order
-    values = { L: -1, W: -1, '1': -1, S: 1, N: 1, '0': 1 }
-    [:width, :length, :height].zip(@parsed_params[:sort_order].map { |order| values[order.to_s.to_sym] }).to_h
+    values = %w(L W H)
+    @parsed_params[:sort_order].insert(2, (values - @parsed_params[:sort_order][0..1]).first)
   end
 
   def sort_vehicle(vehicle)
-    sort = @parsed_params[:sort_order]
-    vehicle.sort_by { |a| [sort[:length]*a[1][0], sort[:width]*a[1][1], sort[:height]*a[1][2]] }
+    values = { L: :length, W: :width, H: :height }
+    sort = @parsed_params[:sort_order][0..2].map { |order| values[order.to_s.to_sym] }
+    vehicle_sorted = vehicle.sort_by { |v| [v[sort[0]], v[sort[1]], v[sort[2]]] }
+    (@parsed_params[:sort_order][-1] == 1 ? vehicle_sorted.reverse : vehicle_sorted)
   end
 
   def parse_exception_cells
@@ -122,7 +124,8 @@ class MainPageController < ApplicationController
         end
         is_all_veh_inserted = all_vehicle_inserted?
         if is_all_veh_inserted && is_real_vehicle?(vehicle_type)
-          @new_sub_decks_list.push(@sub_deck)
+          @new_sub_decks_list.unshift(@sub_deck)
+          # @new_sub_decks_list.push(@sub_deck)
         end
       end
       merge_sub_decks if @new_sub_decks_list.length > 1
@@ -142,16 +145,30 @@ class MainPageController < ApplicationController
           merged_not_fit = sub_deck_idx[:not_fit].merge(sub_deck_j[:not_fit])
           if sub_deck_idx[:width] == sub_deck_j[:width] && sub_deck_idx[:length].end + 1 == sub_deck_j[:length].begin
               merged_length = sub_deck_idx[:length].begin..sub_deck_j[:length].end
-              cursor = get_cursor_from_deck_range(sub_deck_idx)
-              end_cursor = get_end_cursor_from_deck_range(sub_deck_j)
+              if ul_placement?
+                cursor = get_cursor_from_deck_range(sub_deck_idx)
+                end_cursor = get_end_cursor_from_deck_range(sub_deck_j)
+                merged_top_map = set_top_map_for_new_sub_deck(end_cursor, cursor)
+              else
+                sub_deck_idx[:top_map].pop
+                merged_top_map = sub_deck_idx[:top_map] + sub_deck_j[:top_map][sub_deck_j[:length]] +
+                    sub_deck_j[:top_map][-1]
+              end
               merged_sub_decks_list.append({ width: sub_deck_idx[:width], length: merged_length, not_fit: merged_not_fit,
-                                             top_map: set_top_map_for_new_sub_deck(end_cursor, cursor) })
+                                             top_map: merged_top_map })
               merged_sub_decks_indexes.add(j)
               merged_sub_decks_indexes.add(idx)
           elsif sub_deck_idx[:length] == sub_deck_j[:length] && sub_deck_idx[:width].end + 1 == sub_deck_j[:width].begin
               merged_width = sub_deck_idx[:width].begin..sub_deck_j[:width].end
-              sub_deck_idx[:top_map].pop
-              merged_top_map = sub_deck_idx[:top_map] + sub_deck_j[:top_map][sub_deck_j[:width]]
+              if ul_placement?
+                sub_deck_idx[:top_map].pop
+                merged_top_map = sub_deck_idx[:top_map] + sub_deck_j[:top_map][sub_deck_j[:width]] +
+                    sub_deck_j[:top_map][-1]
+              else
+                cursor = get_cursor_from_deck_range(sub_deck_idx)
+                end_cursor = get_end_cursor_from_deck_range(sub_deck_j)
+                merged_top_map = set_top_map_for_new_sub_deck(end_cursor, cursor)
+              end
               merged_sub_decks_list.append({ width: merged_width, length: sub_deck_idx[:length], not_fit: merged_not_fit,
                                              top_map: merged_top_map })
               merged_sub_decks_indexes.add(j)
@@ -172,7 +189,7 @@ class MainPageController < ApplicationController
   end
 
   def get_cursor_from_deck_range(sub_deck)
-    {width: sub_deck[:width].begin, length: sub_deck[:length].begin}
+    { width: sub_deck[:width].begin, length: sub_deck[:length].begin }
   end
 
   def is_real_vehicle?(curr_veh_type)
@@ -191,9 +208,11 @@ class MainPageController < ApplicationController
   end
 
   def insert_standard_vehicle(idx, not_enough_space, veh)
+    std_idx = idx
     until not_enough_space do
-      idx, not_enough_space = try_insert_vehicle(idx, veh)
+      std_idx, not_enough_space = try_insert_vehicle(std_idx, veh)
     end
+    idx += std_idx > 0 ? 1 : 0
     idx
   end
 
@@ -347,7 +366,7 @@ class MainPageController < ApplicationController
           end
         end
         if !ul_placement? && in_pit
-          real_end_cursor[:length] -= 1
+          real_end_cursor[:width] -= 1
           break
         end
       end
