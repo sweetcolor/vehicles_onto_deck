@@ -1,9 +1,9 @@
-/table
-/  - @parsed_params.each_pair do |key, item|
-/    tr
-/      td = key
-/      td = item
-/p +++++++++++++++++++++++++++++++++++++++++++++++++++
+table
+  - @parsed_query.each_pair do |key, item|
+    tr
+      td = key
+      td = item.to_s
+p +++++++++++++++++++++++++++++++++++++++++++++++++++
 = @inserted_vehicles
 p +++++++++++++++++++++++++++++++++++++++++++++++++++
 table
@@ -18,7 +18,7 @@ table
         = idx
       - for col in row
         td
-          = col[:name]
+          = col.name
 /table class=:vehicles
 /  tr
 /    th

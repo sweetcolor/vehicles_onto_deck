@@ -7,8 +7,4 @@ module MainPageHelper
     end
     FALSE
   end
-
-  def convert_column_name_to_int(name)
-    name.downcase.split('').map { |c| c.ord % 'a'.ord }.map.with_index { |pos, i| pos*10**i}.reduce(:+)
-  end
 end
