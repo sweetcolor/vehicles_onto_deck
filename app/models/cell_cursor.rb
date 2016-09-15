@@ -6,6 +6,13 @@ class CellCursor
     @length = length
   end
 
+  def inspect
+    '(%s, %s)' % [@width, @length]
+  end
+
+  def to_s
+    inspect
+  end
 
   def +(other)
     CellCursor.new(@width+other.width, @length+other.length)

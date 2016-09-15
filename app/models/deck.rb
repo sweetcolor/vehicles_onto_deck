@@ -8,6 +8,14 @@ class Deck
     @max_height = 0
   end
 
+  def to_s
+    inspect
+  end
+
+  def inspect
+    '[[%s, %s]]' % [@width, @length]
+  end
+
   def make_deck_cells(std_height, exception_height)
     @max_height = [std_height, exception_height.values.max].max
     cells = Array.new(@length) {

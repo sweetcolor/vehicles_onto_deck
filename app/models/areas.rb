@@ -3,22 +3,30 @@ class Areas
 
   def initialize(areas_array, placement)
     @areas_array = areas_array
+    @areas_hash = areas_array.reduce({}) { |hash, area| hash[area.name] = area; hash }
     @placement = placement
     sort
     # @sorted_by_width = sort_by_width
     # @sorted_by_length = sort_by_length
   end
 
-  def reset(areas_array)
-    unless areas_array.empty?
-      @areas_array.clear
-      @areas_array = areas_array + @sorted_array
+  def reset(new_areas, old_areas)
+    @areas_hash = @areas_hash.delete_if { |key| old_areas.has_key?(key) }.merge(new_areas)
+    keys = @areas_hash.keys
+    keys.each do |key|
+      @areas_hash[key].border_areas = @areas_hash[key].border_areas.delete_if do |border_area_key|
+        !@areas_hash.has_key?(border_area_key)
+      end
     end
+    @areas_array = @areas_hash.values
+    # unless new_areas.empty?
+    #   @areas_array = new_areas + @sorted_array
+    # end
     sort
   end
 
   def get_next
-    ul_placement? ? upper_most : left_most
+    @sorted_array.pop
   end
 
   def empty?
@@ -29,14 +37,6 @@ class Areas
 
   def sort
     @sorted_array = ul_placement? ? sort_by_length : sort_by_width
-  end
-
-  def left_most
-    @sorted_array.pop
-  end
-
-  def upper_most
-    @sorted_array.pop
   end
 
   def ul_placement?

@@ -8,6 +8,13 @@ class Cell
     @filled = hash[:filled]
   end
 
+  def to_s
+    inspect
+  end
+
+  def inspect
+    @cell_hash.to_s
+  end
 
   def method_missing(name, *args)
     @cell_hash.send(name, *args)

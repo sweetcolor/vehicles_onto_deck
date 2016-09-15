@@ -10,7 +10,7 @@ class Vehicle
   end
 
   def to_s
-    @vehicle_hash.to_s
+    inspect
   end
 
   def inspect

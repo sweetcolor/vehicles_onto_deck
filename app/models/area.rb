@@ -1,7 +1,7 @@
 class Area
   attr_accessor :begin_cursor, :end_cursor, :border_areas, :fitted_sides, :length, :width, :name
 
-  def initialize(begin_cursor, end_cursor, fitted_sides={}, border_areas=[])
+  def initialize(begin_cursor, end_cursor, fitted_sides={}, border_areas={})
     @name = '%s %s' % [begin_cursor, end_cursor]
     @begin_cursor = begin_cursor
     @end_cursor = end_cursor
@@ -14,12 +14,20 @@ class Area
     @side_is_fitted = Hash.new
   end
 
-  def crossing?(other_area)
-    (other_area.width.cover?(@width.begin) || other_area.width.cover?(@width.end)) &&
-        (other_area.length.cover?(@length.begin) || other_area.length.cover?(@length.end))
+  def inspect
+    '[%s, %s]' % [@width, @length]
   end
 
-  def can_be_merge?(other_area)
+  def to_s
+    inspect
+  end
+
+  def crossing?(other_area)
+    ((@width.cover?(other_area.width.begin) || @width.cover?(other_area.width.end))) &&
+        (@length.cover?(other_area.length.begin) || @length.cover?(other_area.length.end))
+  end
+
+  def override?(other_area)
     (other_area.width.cover?(@width.begin) && other_area.width.cover?(@width.end)) &&
         (other_area.length.cover?(@length.begin) && other_area.length.cover?(@length.end))
   end
@@ -28,24 +36,31 @@ class Area
     # veh_end_cursor = CellCursor.new(@begin_cursor.width + veh_area.width, @begin_cursor.length + veh_area.length)
     # veh_area = Area.new(@begin_cursor, veh_end_cursor)
     if area.crossing?(veh_area)
-      width_begin_cover = area.width.cover?(veh_area.width.begin)
-      width_end_cover = area.width.cover?(veh_area.width.end)
-      length_begin_cover = area.length.cover?(veh_area.length.begin)
-      length_end_cover = area.length.cover?(veh_area.length.end)
-      width_begin = width_begin_cover ? veh_area.width.begin : area.width.begin
-      width_end = width_end_cover ? veh_area.width.end : area.width.end
-      length_begin = length_begin_cover ? veh_area.length.begin : area.length.begin
-      length_end = length_end_cover ? veh_area.length.end : area.length.end
-      area.put_vehicle(CellCursor.new(width_begin, length_begin), CellCursor.new(width_end, length_end))
+      length_begin, length_end, width_begin, width_end = area.determine_area(veh_area)
+      veh_area = Area.new(CellCursor.new(width_begin, length_begin), CellCursor.new(width_end, length_end))
+      area.put_vehicle(veh_area)
     else
-      Hash.new
+      { new_areas: Hash.new, old_areas: Hash.new }
     end
+  end
+
+  def determine_area(other_area)
+    width_begin_cover = @width.cover?(other_area.width.begin)
+    width_end_cover = @width.cover?(other_area.width.end)
+    length_begin_cover = @length.cover?(other_area.length.begin)
+    length_end_cover = @length.cover?(other_area.length.end)
+    width_begin = width_begin_cover ? other_area.width.begin : @width.begin
+    width_end = width_end_cover ? other_area.width.end : @width.end
+    length_begin = length_begin_cover ? other_area.length.begin : @length.begin
+    length_end = length_end_cover ? other_area.length.end : @length.end
+    return length_begin, length_end, width_begin, width_end
   end
 
   def put_vehicle(veh_area)
     # TODO fix override
     veh_begin_cursor, veh_end_cursor = veh_area.begin_cursor, veh_area.end_cursor
     @new_areas = Hash.new
+    @old_areas = Hash.new
     unless veh_begin_cursor.width == @begin_cursor.width
       push_new_area(@begin_cursor.deep_dup, CellCursor.new(veh_begin_cursor.width-1, @end_cursor.length),
                           { right: [veh_begin_cursor.length..veh_end_cursor.length] } )
@@ -63,11 +78,22 @@ class Area
                     { top: [veh_begin_cursor.width..veh_end_cursor.width] } )
     end
     # veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
-    @border_areas.each do |area|
-      @new_areas.merge! try_put_vehicle_in_cross_area(veh_area, area)
+    @old_areas[@name] = self
+    @border_areas.each do |name, area|
+      area.border_areas.delete(@name)
+      areas_after_putting_vehicle = try_put_vehicle_in_cross_area(veh_area, area)
+      if areas_after_putting_vehicle[:new_areas].empty?
+        areas_after_putting_vehicle[:new_areas][name] = area
+      else
+        areas_after_putting_vehicle[:old_areas][name] = area
+      end
+      @new_areas.merge!(areas_after_putting_vehicle[:new_areas])
+      @old_areas.merge!(areas_after_putting_vehicle[:old_areas])
     end
     find_border_area
-    @new_areas.values
+    # merge_areas
+    remove_overridden
+    { new_areas: @new_areas, old_areas: @old_areas }
   end
 
   private
@@ -81,23 +107,73 @@ class Area
   end
 
   def find_border_area
+    border_areas = Hash.new
     @new_areas.each_pair do |name_top, area_top|
       @new_areas.each_pair do |name_sub, area_sub|
-        area_top.border_areas.push(area_sub) if !name_top.eql?(name_sub) && area_top.crossing?(area_sub)
+        if !name_top.eql?(name_sub) && area_top.crossing?(area_sub)
+          border_areas[name_sub] = area_sub
+        end
       end
+      area_top.border_areas = border_areas.deep_dup
+      border_areas.clear
     end
   end
 
-  def merge
+  def remove_overridden
     # merged_areas = @new_areas.deep_dup
-    @new_areas.each_pair do |name_top, area_top|
-      @new_areas.each_pair do |name_sub, area_sub|
-        if !name_top.eql?(name_sub) && area_top.can_be_merge?(area_sub)
-          @new_areas.delete(name_sub)
+    @new_areas.values.each do |area_top|
+      @new_areas.values.each do |area_sub|
+        if !area_top.name.eql?(area_sub.name) && area_sub.override?(area_top)
+          @new_areas.delete(area_sub.name)
         end
       end
     end
   end
+
+  # def merge_areas
+  #   merged_areas = Hash.new
+  #   @new_areas.each_pair do |name_top, area_top|
+  #     @new_areas.each_pair do |name_sub, area_sub|
+  #       unless name_top.eql?(name_sub)
+  #         if area_top.can_be_merge_by_width?(area_sub)
+  #           length_begin_cover = area_top.length.cover?(area_sub.length.begin)
+  #           length_end_cover = area_top.length.cover?(area_sub.length.end)
+  #
+  #           length_begin = length_begin_cover ? area_sub.length.begin : area_top.length.begin
+  #           length_end = length_end_cover ? area_sub.length.end : area_top.length.end
+  #           width_begin, width_end  = area_top.width.end+1 == area_sub.width.begin ?
+  #               [area_top.width.begin, area_sub.width.end] : [area_sub.width.begin, area_top.width.end]
+  #
+  #           merged_area = Area.new(CellCursor.new(width_begin, length_begin), CellCursor.new(width_end, length_end))
+  #           merged_areas[merged_area.name] = merged_area
+  #         elsif area_top.can_be_merge_by_length?(area_sub)
+  #           width_begin_cover = area_top.width.cover?(area_sub.width.begin)
+  #           width_end_cover = area_top.width.cover?(area_sub.width.end)
+  #
+  #           width_begin = width_begin_cover ? area_sub.width.begin : area_top.width.begin
+  #           width_end = width_end_cover ? area_sub.width.end : area_top.width.end
+  #           length_begin, length_end  = area_top.length.end+1 == area_sub.length.begin ?
+  #               [area_top.length.begin, area_sub.length.end] : [area_sub.length.begin, area_top.length.end]
+  #           merged_area = Area.new(CellCursor.new(width_begin, length_begin), CellCursor.new(width_end, length_end))
+  #           merged_areas[merged_area.name] = merged_area
+  #         end
+  #       end
+  #     end
+  #   end
+  #   @new_areas.merge!(merged_areas)
+  # end
+
+  # def can_be_merge_by_width?(other_area)
+  #   (end_cursor.width + 1 == other_area.begin_cursor.width || other_area.end_cursor.width + 1 == begin_cursor.width) &&
+  #       (length.cover?(other_area.begin_cursor.length) || other_area.length.cover?(begin_cursor.length) ||
+  #           length.cover?(other_area.end_cursor.length) || other_area.length.cover?(end_cursor.length))
+  # end
+  #
+  # def can_be_merge_by_length?(other_area)
+  #   (end_cursor.length + 1 == other_area.begin_cursor.length || other_area.end_cursor.length + 1 == begin_cursor.length) &&
+  #       (width.cover?(other_area.begin_cursor.width) || other_area.length.cover?(begin_cursor.width) ||
+  #           width.cover?(other_area.end_cursor.width) || other_area.length.cover?(end_cursor.width))
+  # end
 
   # def check_fitted_side
   #   fitted_sides.each_pair do |side_name, fitted_ranges|
