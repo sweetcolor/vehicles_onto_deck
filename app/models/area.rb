@@ -122,7 +122,7 @@ class Area
           border_areas.add(name_sub)
         end
       end
-      area_top.border_areas = border_areas.deep_dup
+      area_top.border_areas = border_areas.to_a
       border_areas.clear
     end
   end
