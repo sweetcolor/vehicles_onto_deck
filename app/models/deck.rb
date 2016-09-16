@@ -35,7 +35,6 @@ class Deck
     if area.length.size >= vehicle.length && area.width.size >= vehicle.width
       veh_area.length.each do |i|
         veh_area.width.each do |j|
-          # TODO override
           # if @cells[i][j].filled
           #   fitted = FALSE
           # elsif @cells[i][j].height < vehicle.height

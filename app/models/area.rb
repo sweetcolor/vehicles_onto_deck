@@ -24,21 +24,23 @@ class Area
 
   def crossing?(other_area)
     ((@width.cover?(other_area.width.begin) || @width.cover?(other_area.width.end))) &&
-        (@length.cover?(other_area.length.begin) || @length.cover?(other_area.length.end))
+        (@length.cover?(other_area.length.begin) || @length.cover?(other_area.length.end)) ||
+    ((other_area.width.cover?(@width.begin) || other_area.width.cover?(@width.end))) &&
+        (other_area.length.cover?(@length.begin) || other_area.length.cover?(@length.end))
   end
 
   def override?(other_area)
-    (other_area.width.cover?(@width.begin) && other_area.width.cover?(@width.end)) &&
-        (other_area.length.cover?(@length.begin) && other_area.length.cover?(@length.end))
+    (@width.cover?(other_area.width.begin) && @width.cover?(other_area.width.end)) &&
+        (@length.cover?(other_area.length.begin) && @length.cover?(other_area.length.end))
   end
 
-  def try_put_vehicle_in_cross_area(veh_area, area)
+  def try_put_vehicle_in_cross_area(veh_area, area, areas_hash, passed_areas)
     # veh_end_cursor = CellCursor.new(@begin_cursor.width + veh_area.width, @begin_cursor.length + veh_area.length)
     # veh_area = Area.new(@begin_cursor, veh_end_cursor)
     if area.crossing?(veh_area)
       length_begin, length_end, width_begin, width_end = area.determine_area(veh_area)
       veh_area = Area.new(CellCursor.new(width_begin, length_begin), CellCursor.new(width_end, length_end))
-      area.put_vehicle(veh_area)
+      area.put_vehicle(veh_area, areas_hash, passed_areas)
     else
       { new_areas: Hash.new, old_areas: Hash.new }
     end
@@ -56,43 +58,49 @@ class Area
     return length_begin, length_end, width_begin, width_end
   end
 
-  def put_vehicle(veh_area)
-    # TODO fix override
-    veh_begin_cursor, veh_end_cursor = veh_area.begin_cursor, veh_area.end_cursor
+  def put_vehicle(veh_area, areas_hash, passed_areas=Set.new)
     @new_areas = Hash.new
     @old_areas = Hash.new
-    unless veh_begin_cursor.width == @begin_cursor.width
-      push_new_area(@begin_cursor.deep_dup, CellCursor.new(veh_begin_cursor.width-1, @end_cursor.length),
-                          { right: [veh_begin_cursor.length..veh_end_cursor.length] } )
-    end
-    unless veh_end_cursor.length == @end_cursor.length
-      push_new_area(CellCursor.new(@begin_cursor.width, veh_end_cursor.length+1), @end_cursor.deep_dup,
-                          { top: [veh_begin_cursor.width..veh_end_cursor.width] } )
-    end
-    unless veh_end_cursor.width == @end_cursor.width
-      push_new_area(CellCursor.new(veh_end_cursor.width+1, @begin_cursor.length), @end_cursor.deep_dup,
-                          { left: [veh_begin_cursor.length..veh_end_cursor.length] } )
-    end
-    unless veh_begin_cursor.length == @begin_cursor.length
-      push_new_area(@begin_cursor.deep_dup, CellCursor.new(@end_cursor.width, veh_begin_cursor.length-1),
-                    { top: [veh_begin_cursor.width..veh_end_cursor.width] } )
-    end
-    # veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
-    @old_areas[@name] = self
-    @border_areas.each do |name, area|
-      area.border_areas.delete(@name)
-      areas_after_putting_vehicle = try_put_vehicle_in_cross_area(veh_area, area)
-      if areas_after_putting_vehicle[:new_areas].empty?
-        areas_after_putting_vehicle[:new_areas][name] = area
-      else
-        areas_after_putting_vehicle[:old_areas][name] = area
+    unless passed_areas.include?(@name)
+      passed_areas.add(@name)
+
+        veh_begin_cursor, veh_end_cursor = veh_area.begin_cursor, veh_area.end_cursor
+      unless veh_begin_cursor.width == @begin_cursor.width
+        push_new_area(@begin_cursor.deep_dup, CellCursor.new(veh_begin_cursor.width-1, @end_cursor.length),
+                            { right: [veh_begin_cursor.length..veh_end_cursor.length] } )
       end
-      @new_areas.merge!(areas_after_putting_vehicle[:new_areas])
-      @old_areas.merge!(areas_after_putting_vehicle[:old_areas])
+      unless veh_end_cursor.length == @end_cursor.length
+        push_new_area(CellCursor.new(@begin_cursor.width, veh_end_cursor.length+1), @end_cursor.deep_dup,
+                            { top: [veh_begin_cursor.width..veh_end_cursor.width] } )
+      end
+      unless veh_end_cursor.width == @end_cursor.width
+        push_new_area(CellCursor.new(veh_end_cursor.width+1, @begin_cursor.length), @end_cursor.deep_dup,
+                            { left: [veh_begin_cursor.length..veh_end_cursor.length] } )
+      end
+      unless veh_begin_cursor.length == @begin_cursor.length
+        push_new_area(@begin_cursor.deep_dup, CellCursor.new(@end_cursor.width, veh_begin_cursor.length-1),
+                      { top: [veh_begin_cursor.width..veh_end_cursor.width] } )
+      end
+      # veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
+      @old_areas[@name] = self
+      @border_areas.each do |name|
+        unless passed_areas.include?(name)
+          areas_hash[name].border_areas.delete(@name)
+          areas_after_putting_vehicle = try_put_vehicle_in_cross_area(veh_area, areas_hash[name], areas_hash, passed_areas)
+          if areas_after_putting_vehicle[:new_areas].empty?
+            areas_after_putting_vehicle[:new_areas][name] = areas_hash[name]
+          else
+            areas_after_putting_vehicle[:old_areas][name] = areas_hash[name]
+          end
+          @new_areas.merge!(areas_after_putting_vehicle[:new_areas])
+          @old_areas.merge!(areas_after_putting_vehicle[:old_areas])
+        end
+      end
+      remove_overridden
+      find_border_area
+      # merge_areas
+      remove_overridden
     end
-    find_border_area
-    # merge_areas
-    remove_overridden
     { new_areas: @new_areas, old_areas: @old_areas }
   end
 
@@ -107,11 +115,11 @@ class Area
   end
 
   def find_border_area
-    border_areas = Hash.new
+    border_areas = Set.new
     @new_areas.each_pair do |name_top, area_top|
       @new_areas.each_pair do |name_sub, area_sub|
         if !name_top.eql?(name_sub) && area_top.crossing?(area_sub)
-          border_areas[name_sub] = area_sub
+          border_areas.add(name_sub)
         end
       end
       area_top.border_areas = border_areas.deep_dup
@@ -123,7 +131,7 @@ class Area
     # merged_areas = @new_areas.deep_dup
     @new_areas.values.each do |area_top|
       @new_areas.values.each do |area_sub|
-        if !area_top.name.eql?(area_sub.name) && area_sub.override?(area_top)
+        if !area_top.name.eql?(area_sub.name) && area_top.override?(area_sub)
           @new_areas.delete(area_sub.name)
         end
       end

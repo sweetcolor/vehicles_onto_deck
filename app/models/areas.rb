@@ -1,5 +1,5 @@
 class Areas
-  attr_reader :areas_array
+  attr_reader :areas_array, :areas_hash
 
   def initialize(areas_array, placement)
     @areas_array = areas_array
@@ -23,6 +23,10 @@ class Areas
     #   @areas_array = new_areas + @sorted_array
     # end
     sort
+  end
+
+  def any_fitted?(not_fitted)
+    !(areas_array.to_set - not_fitted).empty?
   end
 
   def get_next

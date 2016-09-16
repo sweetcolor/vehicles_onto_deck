@@ -31,66 +31,80 @@ class MainPageController < ApplicationController
     # end
     # @decks_queue.push({ length: 0..@deck.length-1, width: 0..@deck.width-1, top_map: @top_map, not_fit: Hash.new })
     fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
-    fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
+    # fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
+    insert_standard_vehicle
     @answer = real_vehicle_can_be_fitted
   end
 
   private
 
   def fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
+    prepare_vehicle(vehicle_type)
+    @vehicles.each do |veh|
+      areas = { new_areas: Hash.new, old_areas: Hash.new }
+      areas = vehicle_insert_func.call(areas, veh)
+      @areas.reset(areas[:new_areas], areas[:old_areas])
+    end
+  end
+
+  def prepare_vehicle(vehicle_type)
     @inserted_vehicles = @parsed_query[vehicle_type].reduce(@inserted_vehicles) { |h, v| h[v[:name]] = 0; h }
     @vehicles = remove_too_high_vehicle(@parsed_query[vehicle_type])
+  end
+
+  def insert_real_vehicle(areas, veh)
+    while !@areas.empty? && @inserted_vehicles[veh.name].zero?
+      areas = try_insert_vehicle(veh)
+    end
+    areas
+  end
+
+  def insert_standard_vehicle
+    # TODO insert standard
+    prepare_vehicle(:SV)
+    @vehicles.each do |veh|
+      areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new }
+      # areas = vehicle_insert_func.call(areas, veh)
+      # while areas[:inserted]
+        while !@areas.empty? && @areas.any_fitted?(areas[:not_fitted_areas])
+          areas = try_insert_vehicle(veh)
+          @areas.reset(areas[:new_areas], areas[:old_areas]) if areas[:not_fitted_areas].empty?
+        end
+      # end
+    end
+    # areas
+  end
+
+  def try_insert_vehicle(veh)
     new_areas = Hash.new
     old_areas = Hash.new
-    @vehicles.each do |veh|
-      new_areas.clear
-      old_areas.clear
-      new_areas, old_areas = vehicle_insert_func.call(new_areas, old_areas, veh)
-      @areas.reset(new_areas, old_areas)
-    end
-  end
-
-  def insert_real_vehicle(new_areas, old_areas, veh)
-    while !@areas.empty? && @inserted_vehicles[veh.name].zero?
-      new_areas, old_areas = try_insert_vehicle(new_areas, old_areas, veh)
-    end
-    return new_areas, old_areas
-  end
-
-  def insert_standard_vehicle(new_areas, old_areas, veh)
-    # TODO insert standard
-    until @areas.empty?
-      new_areas, old_areas = try_insert_vehicle(new_areas, old_areas, veh)
-    end
-    return new_areas, old_areas
-  end
-
-  def try_insert_vehicle(new_areas, old_areas, veh)
+    areas = { new_areas: new_areas, old_areas: old_areas, not_fitted_areas: Set.new }
     area = @areas.get_next
     veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
     veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
     result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, veh_area, area)
     if result_of_checking[:fitted]
       @deck.put_vehicle_onto_deck(veh, veh_area)
-      areas = area.put_vehicle(veh_area)
-      new_areas.merge!(areas[:new_areas])
-      old_areas.merge!(areas[:old_areas])
+      areas.merge! area.put_vehicle(veh_area, @areas.areas_hash)
+      # new_areas.merge!(areas[:new_areas])
+      # old_areas.merge!(areas[:old_areas])
       @inserted_vehicles[veh.name] += 1
+      # areas[:not_fitted_areas][area.name] = FALSE
     elsif result_of_checking[:too_high]
       small_height_area = Area.new(veh_begin_cursor, result_of_checking[:small_height_end_cursor])
       new_areas.merge!(area.put_vehicle(small_height_area))
-
       new_areas[small_height_area.name] = small_height_area
+    else
+      areas[:not_fitted_areas].add(area.name)
     end
-    return new_areas, old_areas
+    areas
   end
 
   # ============================
 
   def old_fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
     # @parsed_params[vehicle_type].each { |v| @vehicles_location[v[:name]] = Hash.new }
-    @inserted_vehicles = @parsed_query[vehicle_type].reduce(@inserted_vehicles) { |h, v| h[v[:name]] = 0; h }
-    @vehicles = remove_too_high_vehicle(@parsed_query[vehicle_type])
+    prepare_vehicle(vehicle_type)
     is_all_veh_inserted = FALSE
     until @decks_queue.empty? || is_all_veh_inserted && is_real_vehicle?(vehicle_type) do
       @sub_deck = @decks_queue.pop
