@@ -22,6 +22,10 @@ class Area
     inspect
   end
 
+  def area_contains_cursor?(cursor)
+    @width.cover?(cursor.width) && @length.cover?(cursor.length)
+  end
+
   def crossing?(other_area)
     ((@width.cover?(other_area.width.begin) || @width.cover?(other_area.width.end))) &&
         (@length.cover?(other_area.length.begin) || @length.cover?(other_area.length.end)) ||

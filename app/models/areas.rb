@@ -5,7 +5,7 @@ class Areas
     @areas_array = areas_array
     @areas_hash = areas_array.reduce({}) { |hash, area| hash[area.name] = area; hash }
     @placement = placement
-    sort_areas
+    @sorted_array = sort_areas
     # @sorted_by_width = sort_by_width
     # @sorted_by_length = sort_by_length
   end
@@ -25,7 +25,7 @@ class Areas
     # unless new_areas.empty?
     #   @areas_array = new_areas + @sorted_array
     # end
-    sort_areas
+    @sorted_array = sort_areas
   end
 
   def any_fitted?(not_fitted)
@@ -40,10 +40,19 @@ class Areas
     @sorted_array.empty?
   end
 
+  def find_area(begin_cursor)
+    contains_beg_cur_areas = Array.new
+    areas_array.each do |area|
+      contains_beg_cur_areas << area if area.area_contains_cursor?(begin_cursor)
+    end
+    sort_areas(contains_beg_cur_areas).pop
+  end
+
   private
 
-  def sort_areas
-    @sorted_array = ul_placement? ? sort_by_length : sort_by_width
+  def sort_areas(arr=nil)
+    arr = arr.nil? ? @areas_array : arr
+    ul_placement? ? sort_by_length(arr) : sort_by_width(arr)
   end
 
   def sort_border_name_areas(area, border_arr)
@@ -68,11 +77,11 @@ class Areas
     @placement.eql? 'UL'
   end
 
-  def sort_by_width
-    @areas_array.sort_by { |area| [area.begin_cursor.width, area.begin_cursor.length] }.reverse
+  def sort_by_width(arr)
+    arr.sort_by { |area| [area.begin_cursor.width, area.begin_cursor.length] }.reverse
   end
 
-  def sort_by_length
-    @areas_array.sort_by { |area| [area.begin_cursor.length, area.begin_cursor.width] }.reverse
+  def sort_by_length(arr)
+    arr.sort_by { |area| [area.begin_cursor.length, area.begin_cursor.width] }.reverse
   end
 end

@@ -60,7 +60,6 @@ class MainPageController < ApplicationController
   end
 
   def insert_standard_vehicle
-    # TODO insert standard
     prepare_vehicle(:SV)
     @vehicles.each do |veh|
       areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new }
@@ -95,8 +94,27 @@ class MainPageController < ApplicationController
     elsif result_of_checking[:too_high]
       # TODO height
       small_height_area = Area.new(veh_begin_cursor, result_of_checking[:small_height_end_cursor])
-      new_areas.merge!(area.put_vehicle(small_height_area, @areas.areas_hash))
-      new_areas[small_height_area.name] = small_height_area
+      copy_areas = @areas.deep_dup
+      next_areas_to_small_height = areas.deep_dup
+      next_areas_to_small_height.merge!(area.deep_dup.put_vehicle(small_height_area, copy_areas.areas_hash))
+      next_areas_to_small_height[:old_areas][area.name] = area
+      begin
+        copy_areas.reset(next_areas_to_small_height[:new_areas], next_areas_to_small_height[:old_areas])
+        area = copy_areas.get_next
+        veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
+        veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
+        result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, veh_area, area)
+        if result_of_checking[:fitted]
+          area = @areas.find_area(area.begin_cursor)
+          @deck.put_vehicle_onto_deck(veh, veh_area)
+          areas.merge! area.put_vehicle(veh_area, @areas.areas_hash)
+          @inserted_vehicles[veh.name] += 1
+          areas[:not_fitted_areas].clear
+          break
+        end
+      end until copy_areas.empty?
+      # new_areas.merge!(area.put_vehicle(small_height_area, @areas.areas_hash))
+      # new_areas[small_height_area.name] = small_height_area
     else
       areas[:not_fitted_areas].add(area.name)
     end
