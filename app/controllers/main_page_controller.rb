@@ -41,7 +41,7 @@ class MainPageController < ApplicationController
   def fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
     prepare_vehicle(vehicle_type)
     @vehicles.each do |veh|
-      areas = { new_areas: Hash.new, old_areas: Hash.new }
+      areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new  }
       areas = vehicle_insert_func.call(areas, veh)
       @areas.reset(areas[:new_areas], areas[:old_areas])
     end
@@ -54,7 +54,7 @@ class MainPageController < ApplicationController
 
   def insert_real_vehicle(areas, veh)
     while !@areas.empty? && @inserted_vehicles[veh.name].zero?
-      areas = try_insert_vehicle(veh)
+      areas = try_insert_vehicle(areas, veh)
     end
     areas
   end
@@ -64,10 +64,11 @@ class MainPageController < ApplicationController
     prepare_vehicle(:SV)
     @vehicles.each do |veh|
       areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new }
+      @areas.reset(areas[:new_areas], areas[:old_areas])
       # areas = vehicle_insert_func.call(areas, veh)
       # while areas[:inserted]
         while !@areas.empty? && @areas.any_fitted?(areas[:not_fitted_areas])
-          areas = try_insert_vehicle(veh)
+          areas = try_insert_vehicle(areas, veh)
           @areas.reset(areas[:new_areas], areas[:old_areas]) if areas[:not_fitted_areas].empty?
         end
       # end
@@ -75,10 +76,10 @@ class MainPageController < ApplicationController
     # areas
   end
 
-  def try_insert_vehicle(veh)
+  def try_insert_vehicle(areas, veh)
     new_areas = Hash.new
-    old_areas = Hash.new
-    areas = { new_areas: new_areas, old_areas: old_areas, not_fitted_areas: Set.new }
+    # old_areas = Hash.new
+    # areas = { new_areas: Hash, old_areas: old_areas, not_fitted_areas: Set.new }
     area = @areas.get_next
     veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
     veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
@@ -89,10 +90,12 @@ class MainPageController < ApplicationController
       # new_areas.merge!(areas[:new_areas])
       # old_areas.merge!(areas[:old_areas])
       @inserted_vehicles[veh.name] += 1
+      areas[:not_fitted_areas].clear
       # areas[:not_fitted_areas][area.name] = FALSE
     elsif result_of_checking[:too_high]
+      # TODO height
       small_height_area = Area.new(veh_begin_cursor, result_of_checking[:small_height_end_cursor])
-      new_areas.merge!(area.put_vehicle(small_height_area))
+      new_areas.merge!(area.put_vehicle(small_height_area, @areas.areas_hash))
       new_areas[small_height_area.name] = small_height_area
     else
       areas[:not_fitted_areas].add(area.name)
