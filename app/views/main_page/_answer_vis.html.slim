@@ -1,55 +1,55 @@
 /table
-/  - @parsed_params.each_pair do |key, item|
+/  - @parsed_query.each_pair do |key, item|
 /    tr
 /      td = key
-/      td = item
+/      td = item.to_s
 /p +++++++++++++++++++++++++++++++++++++++++++++++++++
-= @inserted_vehicles
-p +++++++++++++++++++++++++++++++++++++++++++++++++++
-table
-  tr
-    th
-      - deck.first.each_index do |i|
-        th
-          = i
-  - deck.each_with_index do |row, idx|
-    tr
-      th
-        = idx
-      - for col in row
-        td
-          = col[:name]
-/table class=:vehicles
+/= @inserted_vehicles
+/p +++++++++++++++++++++++++++++++++++++++++++++++++++
+/table
 /  tr
 /    th
-/    - deck.first.each_index do |i|
-/      th
-/        = i
-/  - while row < deck.length
-/    tr
-/      - if col.zero?
+/      - deck.first.each_index do |i|
 /        th
-/          = row
-/        /- col = passed_map[row]
-/      - while col < deck.first.length
-/        - name = deck[row][col][:name]
-/        - if @vehicles_location.has_key?(name)
-/          - range = check_if_drawn_vehicle(name, row, col)
-/          - if range
-/            - if @vehicles_location[name][range]
-/              - col += 1
-/            - else
-/              - col += range[:width].size
-/              - @vehicles_location[name][range] = TRUE
-/              td colspan="#{range[:width].size}" rowspan="#{range[:length].size}"
-/                = name
-/          - else
-/            - col += 1
-/        - else
-/          - col += 1
-/          td
-/            = name
-/      - col = 0
-/      - row += 1
-/        /- col += passed_map[row]
-/        /- row += 1 if col >= deck.first.length
+/          = i
+/  - deck.each_with_index do |row, idx|
+/    tr
+/      th
+/        = idx
+/      - for col in row
+/        td
+/          = col.name
+table class="vehicles-visual vehicles"
+  tr
+    th
+    - cells.first.each_index do |i|
+      th
+        = i
+  - while row < cells.length
+    tr
+      - if col.zero?
+        th
+          = row
+        /- col = passed_map[row]
+      - while col < cells.first.length
+        - name = cells[row][col].name
+        - if deck.vehicles_location.has_key?(name)
+          - range = check_if_drawn_vehicle(name, row, col)
+          - if range
+            - if deck.vehicles_location[name][range]
+              - col += 1
+            - else
+              - col += range[:width].size
+              - deck.vehicles_location[name][range] = TRUE
+              td colspan="#{range[:width].size}" rowspan="#{range[:length].size}"
+                = name
+          - else
+            - col += 1
+        - else
+          - col += 1
+          td
+            = name
+      - col = 0
+      - row += 1
+
+= render partial: 'main_page/answer_yna', locals: { answer: @answer, vehicles_location: @deck.vehicles_location }

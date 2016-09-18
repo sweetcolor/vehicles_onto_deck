@@ -1,105 +1,136 @@
 class MainPageController < ApplicationController
-  def initialize
-    @cursor = { width: 0, length: 0 }
-    @inserted_vehicles = Hash.new
-  end
-
   def index
   end
 
   def query
-    @parsed_params = parse_query
-    @parsed_params[:sort_order] = parse_sort_order
-    @parsed_params[:rv] = parse_real_vehicle
-    @parsed_params[:SV] = parse_standard_vehicle
-    @parsed_params[:EX] = parse_exception_cells
-    @deck = make_deck_cells.deep_dup
-    @vehicles_location = Hash.new
-    @decks_queue = Queue.new
-    @new_sub_decks_list = Array.new
-    if ul_placement?
-      @top_map = Array.new(@deck.first.length+1, 0)
-      @top_map[-1] = @deck.length
-    else
-      @top_map = Array.new(@deck.length+1, 0)
-      @top_map[-1] = @deck.first.length
-    end
-    @decks_queue.push({ length: 0..@deck.length-1, width: 0..@deck.first.length-1, top_map: @top_map, not_fit: Hash.new })
+    @a = 5
+    @cursor = { width: 0, length: 0 }
+    @inserted_vehicles = Hash.new
+    @parsed_query = Parser.new(params[:query]).parse
+    @deck = Deck.new(@parsed_query[:deck_length], @parsed_query[:deck_width])
+    @deck.make_deck_cells(@parsed_query[:stdmax], @parsed_query[:EX])
+    area = Area.new(CellCursor.new(0, 0), CellCursor.new(@deck.width-1, @deck.length-1))
+    # area = Area.new(CellCursor.new(0, 0), CellCursor.new(@deck.width, @deck.length), [], {
+    #     top: [@deck.width..@deck.width], bottom: [@deck.width..@deck.width],
+    #     left: [@deck.length..@deck.length], right: [@deck.length..@deck.length]
+    # })
+    @areas = Areas.new([area], @parsed_query[:placement])
+    # @new_areas = Array.new
+    # @new_areas.append({  })
+    # @decks_queue = Queue.new
+    # @new_sub_decks_list = Array.new
+    # if ul_placement?
+    #   @top_map = Array.new(@deck.width+1, 0)
+    #   @top_map[-1] = @deck.length
+    # else
+    #   @top_map = Array.new(@deck.length+1, 0)
+    #   @top_map[-1] = @deck.width
+    # end
+    # @decks_queue.push({ length: 0..@deck.length-1, width: 0..@deck.width-1, top_map: @top_map, not_fit: Hash.new })
     fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
-    fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
-    @answer = real_vehicle_can_be_fitted
+    # fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
+    insert_standard_vehicle
+    @answer = get_answer
+
+  end
+
+  def get_answer
+    count_fitted = count_real_vehicle_fitted
+    answer = count_fitted.zero? ? FALSE : TRUE
+    all = @parsed_query[:rv].length == count_fitted ? TRUE : FALSE
+    { answer: answer, fitted_veh_count: count_fitted, all: all }
   end
 
   private
 
-  def parse_query
-    url_parameters_hash = Hash.new
-    splitted_query = params[:query].split('~').map { |param| param.split('=') }
-    splitted_query.map! { |e| e.length != 2 ? e.map { |sub_e| sub_e.split('_') }.flatten : e }
-    splitted_query.each do |elem_query|
-      url_parameters_hash[elem_query.first.to_sym] = if elem_query.length != 2
-                                                       elem_query[1..elem_query.length]
-                                                     else
-                                                       val = elem_query[elem_query.length-1].split(',').map do |e|
-                                                         e =~ /[0-9]/ ? e.to_i : e
-                                                       end
-                                                       val.length == 1 ? val.first : val
-                                                     end
-    end
-    url_parameters_hash
-  end
-
-  def parse_standard_vehicle
-    create_vehicles_hash(@parsed_params.select { |k| k =~ /sv/})
-  end
-
-  def parse_real_vehicle
-    sort_vehicle create_vehicles_hash(@parsed_params[:rv].map { |v| v.split(',') }.map { |a| [a[0], a[1..3].map { |e| e.to_i }] })
-  end
-
-  def create_vehicles_hash(vehicles_array)
-    vehicles_array.map { |a| [:name, :width, :length, :height].zip([a[0], *a[1]]).to_h }
-  end
-
-  def parse_sort_order
-    values = %w(L W H)
-    @parsed_params[:sort_order].insert(2, (values - @parsed_params[:sort_order][0..1]).first)
-  end
-
-  def sort_vehicle(vehicle)
-    values = { L: :length, W: :width, H: :height }
-    sort = @parsed_params[:sort_order][0..2].map { |order| values[order.to_s.to_sym] }
-    vehicle_sorted = vehicle.sort_by { |v| [v[sort[0]], v[sort[1]], v[sort[2]]] }
-    (@parsed_params[:sort_order][-1] == 1 ? vehicle_sorted.reverse : vehicle_sorted)
-  end
-
-  def parse_exception_cells
-    @parsed_params[:EX].map.with_index do |cell, i|
-      if i.odd?
-        cell.to_i
-      else
-        [:width, :length].zip([
-                                  Range.new(*cell.scan(/[0-9]+/).map { |num| num.to_i - 1 }),
-                                  Range.new(*cell.scan(/[A-Z]+/).map { |str| convert_column_name_to_int(str) })
-                              ]).to_h
-      end
-    end.each_slice(2).to_h
-  end
-
-  def make_deck_cells
-    cells = Array.new(@parsed_params[:deck_length]) {
-      Array.new(@parsed_params[:deck_width], { height: @parsed_params[:stdmax], name: @parsed_params[:stdmax], filled: FALSE })
-    }
-    @parsed_params[:EX].each_pair do |key, val|
-      key[:width].each { |i| key[:length].each { |j| cells[i][j] = { height: val, name: val, filled: FALSE } } }
-    end
-    cells
-  end
-
   def fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
+    prepare_vehicle(vehicle_type)
+    @vehicles.each do |veh|
+      areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new  }
+      areas = vehicle_insert_func.call(areas, veh)
+      @areas.reset(areas[:new_areas], areas[:old_areas])
+    end
+  end
+
+  def prepare_vehicle(vehicle_type)
+    @inserted_vehicles = @parsed_query[vehicle_type].reduce(@inserted_vehicles) { |h, v| h[v[:name]] = 0; h }
+    @vehicles = remove_too_high_vehicle(@parsed_query[vehicle_type])
+  end
+
+  def insert_real_vehicle(areas, veh)
+    while !@areas.empty? && @inserted_vehicles[veh.name].zero?
+      areas = try_insert_vehicle(areas, veh)
+    end
+    areas
+  end
+
+  def insert_standard_vehicle
+    prepare_vehicle(:SV)
+    @vehicles.each do |veh|
+      areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new }
+      @areas.reset(areas[:new_areas], areas[:old_areas])
+      # areas = vehicle_insert_func.call(areas, veh)
+      # while areas[:inserted]
+        while !@areas.empty? && @areas.any_fitted?(areas[:not_fitted_areas])
+          areas = try_insert_vehicle(areas, veh)
+          @areas.reset(areas[:new_areas], areas[:old_areas]) if areas[:not_fitted_areas].empty?
+        end
+      # end
+    end
+    # areas
+  end
+
+  def try_insert_vehicle(areas, veh)
+    new_areas = Hash.new
+    # old_areas = Hash.new
+    # areas = { new_areas: Hash, old_areas: old_areas, not_fitted_areas: Set.new }
+    area = @areas.get_next
+    veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
+    veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
+    result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, veh_area, area)
+    if result_of_checking[:fitted]
+      @deck.put_vehicle_onto_deck(veh, veh_area)
+      areas.merge! area.put_vehicle(veh_area, @areas.areas_hash)
+      # new_areas.merge!(areas[:new_areas])
+      # old_areas.merge!(areas[:old_areas])
+      @inserted_vehicles[veh.name] += 1
+      areas[:not_fitted_areas].clear
+      # areas[:not_fitted_areas][area.name] = FALSE
+    elsif result_of_checking[:too_high]
+      # TODO height
+      small_height_area = Area.new(veh_begin_cursor, result_of_checking[:small_height_end_cursor])
+      copy_areas = @areas.deep_dup
+      next_areas_to_small_height = areas.deep_dup
+      next_areas_to_small_height.merge!(area.deep_dup.put_vehicle(small_height_area, copy_areas.areas_hash))
+      next_areas_to_small_height[:old_areas][area.name] = area
+      begin
+        copy_areas.reset(next_areas_to_small_height[:new_areas], next_areas_to_small_height[:old_areas])
+        area = copy_areas.get_next
+        veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
+        veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
+        result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, veh_area, area)
+        if result_of_checking[:fitted]
+          area = @areas.find_area(area.begin_cursor)
+          @deck.put_vehicle_onto_deck(veh, veh_area)
+          areas.merge! area.put_vehicle(veh_area, @areas.areas_hash)
+          @inserted_vehicles[veh.name] += 1
+          areas[:not_fitted_areas].clear
+          break
+        end
+      end until copy_areas.empty?
+      # new_areas.merge!(area.put_vehicle(small_height_area, @areas.areas_hash))
+      # new_areas[small_height_area.name] = small_height_area
+    else
+      areas[:not_fitted_areas].add(area.name)
+    end
+    areas
+  end
+
+  # ============================
+
+  def old_fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
     # @parsed_params[vehicle_type].each { |v| @vehicles_location[v[:name]] = Hash.new }
-    @inserted_vehicles = @parsed_params[vehicle_type].reduce(@inserted_vehicles) { |h, v| h[v[:name]] = 0; h }
-    @vehicles = remove_too_high_vehicle(@parsed_params[vehicle_type])
+    prepare_vehicle(vehicle_type)
     is_all_veh_inserted = FALSE
     until @decks_queue.empty? || is_all_veh_inserted && is_real_vehicle?(vehicle_type) do
       @sub_deck = @decks_queue.pop
@@ -199,18 +230,18 @@ class MainPageController < ApplicationController
     @inserted_vehicles.values.all? { |status| !status.zero? }
   end
 
-  def real_vehicle_can_be_fitted
-    @inserted_vehicles.slice(*@parsed_params[:rv].map { |v| v[:name] }).values.all? { |s| !s.zero? }
+  def count_real_vehicle_fitted
+    @inserted_vehicles.slice(*@parsed_query[:rv].map { |v| v[:name] }).values.count { |s| !s.zero? }
   end
 
-  def insert_real_vehicle(idx, not_enough_space, veh)
+  def old_insert_real_vehicle(idx, not_enough_space, veh)
     until @inserted_vehicles[veh[:name]] == 1 || not_enough_space do
       idx, not_enough_space = try_insert_vehicle(idx, veh)
     end
     idx
   end
 
-  def insert_standard_vehicle(idx, not_enough_space, veh)
+  def old_insert_standard_vehicle(idx, not_enough_space, veh)
     std_idx = idx
     until not_enough_space do
       std_idx, not_enough_space = try_insert_vehicle(std_idx, veh)
@@ -219,7 +250,7 @@ class MainPageController < ApplicationController
     idx
   end
 
-  def try_insert_vehicle(idx, veh)
+  def old_try_insert_vehicle(idx, veh)
     result_of_checking = check_fit_vehicle_onto_deck(veh)
     if vehicle_fit?(result_of_checking[:in_pit], result_of_checking[:too_high])
       put_vehicle_onto_deck(veh[:name])
@@ -302,7 +333,7 @@ class MainPageController < ApplicationController
   end
 
   def remove_too_high_vehicle(vehicles)
-    height_max = [@parsed_params[:stdmax], @parsed_params[:EX].values.max].max
+    height_max = [@parsed_query[:stdmax], @parsed_query[:EX].values.max].max
     vehicles.map { |veh| veh if veh[:height] <= height_max }.compact
   end
 
@@ -402,6 +433,6 @@ class MainPageController < ApplicationController
   end
 
   def ul_placement?
-    @parsed_params[:placement] == 'UL'
+    @parsed_query[:placement] == 'UL'
   end
 end

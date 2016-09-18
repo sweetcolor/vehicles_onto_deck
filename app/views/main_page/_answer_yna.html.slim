@@ -1,14 +1,20 @@
-- if answer
-  h3 yes they can fit, and here are the locations where you can put each vehicle
-  table
-    - @vehicles_location.slice(*@parsed_params[:rv].map { |v| v[:name] }).each_pair do |name, range|
+- if answer[:answer]
+  h3
+  table class="vehicles-location vehicles"
+    tr
+      th colspan="2"
+        - if answer[:all]
+          | All vehicles were fit successfully
+        - else
+          | #{answer[:fitted_veh_count]} vehicles were fit successfully
+    - vehicles_location.slice(*@parsed_query[:rv].map { |v| v[:name] }).each_pair do |name, range|
       tr
-        td width="50"
+        td
           = name
         - for r in range.keys
-          td width="50"
+          td
             | #{(r[:width].begin+'a'.ord).chr.upcase}#{r[:length].begin+1}..#{(r[:width].end+'a'.ord).chr.upcase}#{r[:length].end+1}
-    - @parsed_params[:SV].each do |veh|
+    - @parsed_query[:SV].each do |veh|
       tr
         td width="350"
           - num = veh[:name].to_s.gsub(/[a-z]/, '')
