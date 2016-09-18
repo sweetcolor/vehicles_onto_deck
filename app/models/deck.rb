@@ -1,11 +1,12 @@
 class Deck
-  attr_reader :max_height, :length, :width, :cells
+  attr_reader :max_height, :length, :width, :cells, :vehicles_location
 
   def initialize(length, width)
     @length = length
     @width = width
     @cells = nil
     @max_height = 0
+    @vehicles_location = Hash.new
   end
 
   def to_s
@@ -59,9 +60,11 @@ class Deck
         @cells[i][j].filled = TRUE
       end
     end
-    # range = { width: @cursor[:width]..@end_cursor[:width], length: @cursor[:length]..@end_cursor[:length] }
-    # @vehicles_location[vehicle_name] = Hash.new unless @vehicles_location.has_key?(vehicle_name)
-    # @vehicles_location[vehicle_name][range] = FALSE
+    veh_beg_cur = veh_area.begin_cursor
+    veh_end_cur = veh_area.end_cursor
+    range = {width: veh_beg_cur.width..veh_end_cur.width, length: veh_beg_cur.length..veh_end_cur.length }
+    @vehicles_location[vehicle.name] = Hash.new unless @vehicles_location.has_key?(vehicle.name)
+    @vehicles_location[vehicle.name][range] = FALSE
   end
 
   def method_missing(name, *args)

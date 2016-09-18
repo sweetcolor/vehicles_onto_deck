@@ -1,13 +1,11 @@
 class MainPageController < ApplicationController
-  def initialize
-    @cursor = { width: 0, length: 0 }
-    @inserted_vehicles = Hash.new
-  end
-
   def index
   end
 
   def query
+    @a = 5
+    @cursor = { width: 0, length: 0 }
+    @inserted_vehicles = Hash.new
     @parsed_query = Parser.new(params[:query]).parse
     @deck = Deck.new(@parsed_query[:deck_length], @parsed_query[:deck_width])
     @deck.make_deck_cells(@parsed_query[:stdmax], @parsed_query[:EX])
@@ -19,7 +17,6 @@ class MainPageController < ApplicationController
     @areas = Areas.new([area], @parsed_query[:placement])
     # @new_areas = Array.new
     # @new_areas.append({  })
-    @vehicles_location = Hash.new
     # @decks_queue = Queue.new
     # @new_sub_decks_list = Array.new
     # if ul_placement?
@@ -33,7 +30,15 @@ class MainPageController < ApplicationController
     fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
     # fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
     insert_standard_vehicle
-    @answer = real_vehicle_can_be_fitted
+    @answer = get_answer
+
+  end
+
+  def get_answer
+    count_fitted = count_real_vehicle_fitted
+    answer = count_fitted.zero? ? FALSE : TRUE
+    all = @parsed_query[:rv].length == count_fitted ? TRUE : FALSE
+    { answer: answer, fitted_veh_count: count_fitted, all: all }
   end
 
   private
@@ -225,8 +230,8 @@ class MainPageController < ApplicationController
     @inserted_vehicles.values.all? { |status| !status.zero? }
   end
 
-  def real_vehicle_can_be_fitted
-    @inserted_vehicles.slice(*@parsed_query[:rv].map { |v| v[:name] }).values.all? { |s| !s.zero? }
+  def count_real_vehicle_fitted
+    @inserted_vehicles.slice(*@parsed_query[:rv].map { |v| v[:name] }).values.count { |s| !s.zero? }
   end
 
   def old_insert_real_vehicle(idx, not_enough_space, veh)
