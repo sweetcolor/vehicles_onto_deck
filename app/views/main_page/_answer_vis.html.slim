@@ -1,4 +1,4 @@
-table
+/table
 /  - @parsed_query.each_pair do |key, item|
 /    tr
 /      td = key
@@ -58,10 +58,11 @@ table
 /      - row += 1
 /
 .vehicles-visual-table.vehicles
-  - cells.each_with_index do |row, i|
-    - row.each_with_index do |cell, j|
-      .vehicles-visual-cell-colour id="c#{i}_#{j}"
-        |
+  - deck.exception_colour.keys.each do |height|
+    .vehicles-visual-cell-colour id="c#{height}"
+      |
+  - lane[:column].times do |i|
+    .vehicles-visual-line id="l#{i}"
   - position.each do |pos|
     /.vehicles-visual-row
     /- row.each_with_index do |cell, j|
@@ -69,8 +70,6 @@ table
     - j = pos[:area].begin_cursor.width
     .vehicles-visual-cell id="a#{i}_#{j}"
       = pos[:vehicle].name
-  - lane[:column].times do |i|
-    .vehicles-visual-line id="l#{i}"
 
 
 = render partial: 'main_page/answer_yna', locals: { answer: @answer, vehicles_location: @deck.vehicles_location }

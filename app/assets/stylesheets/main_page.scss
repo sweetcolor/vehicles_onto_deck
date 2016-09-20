@@ -10,19 +10,21 @@
 
 .vehicles-visual-table {
   float: left;
-  width: 45%;
-  height: 100%;
+  width: 500px;
+  height: 900px;
+  //width: 45%;
+  //height: 100%;
   margin: 0 20px;
   position: relative;
-  border: solid;
+  border: 2px solid;
+  padding: 2px;
 
   .vehicles-visual-row {
   }
 
   .vehicles-visual-line {
-    border-right: 2px dashed;
+    border-right: 1px dashed;
     position: absolute;
-
   }
 
   .vehicles-visual-cell-colour {
@@ -31,7 +33,8 @@
 
   .vehicles-visual-cell {
     position: absolute;
-    //padding:2px 2px;
+    float: left;
+    display: list-item;
     overflow:hidden;
     word-break:normal;
     text-align:center;

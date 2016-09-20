@@ -78,7 +78,7 @@ class Parser
       if i.odd?
         cell.to_i
       else
-        [:width, :length].zip([
+        [:length, :width].zip([
                                   Range.new(*cell.scan(/[0-9]+/).map { |num| num.to_i - 1 }),
                                   Range.new(*cell.scan(/[A-Z]+/).map { |str| convert_column_name_to_int(str) })
                               ]).to_h

@@ -8,6 +8,7 @@ class MainPageController < ApplicationController
     @parsed_query = Parser.new(params[:query]).parse
     @deck = Deck.new(@parsed_query[:deck_length], @parsed_query[:deck_width], @parsed_query[:LL])
     @deck.special_height_cell_colour = @parsed_query[:SHC]
+    @deck.vehicles = @parsed_query[:rv].map { |v| v[:name] }.to_set
     @deck.make_deck_cells(@parsed_query[:stdmax], @parsed_query[:EX])
     area = Area.new(CellCursor.new(0, 0), CellCursor.new(@deck.width-1, @deck.length-1))
     @areas = Areas.new([area], @parsed_query[:placement])
