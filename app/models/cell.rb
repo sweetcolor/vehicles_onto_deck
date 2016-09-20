@@ -13,7 +13,7 @@ class Cell
   end
 
   def inspect
-    @cell_hash.to_s
+    { height: @height, name: @name, filled: @filled }.to_s
   end
 
   def method_missing(name, *args)

@@ -10,6 +10,8 @@ class Parser
     @parsed_query[:rv] = parse_real_vehicle
     @parsed_query[:SV] = parse_standard_vehicle
     @parsed_query[:EX] = parse_exception_cells
+    @parsed_query[:LL] = parse_lane_line
+    @parsed_query[:SHC] = special_height_cell_colour
     @parsed_query
   end
 
@@ -30,6 +32,21 @@ class Parser
                                                      end
     end
     url_parameters_hash
+  end
+
+  def parse_lane_line
+    { column: @parsed_query[:LL][0], colour: @parsed_query[:LL][1..-1] }
+  end
+
+  def special_height_cell_colour
+    if @parsed_query[:a].first == 'vis'
+      shc = Hash.new
+      @parsed_query[:a][1..-1].each_slice(2).to_h.each do |key, val|
+        parse_val = val.split(',').map { |e| e.to_i }
+        shc[parse_val[0]] = { name: key, colour: parse_val[1..-1] }
+      end
+      shc
+    end
   end
 
   def parse_standard_vehicle
@@ -66,7 +83,7 @@ class Parser
                                   Range.new(*cell.scan(/[A-Z]+/).map { |str| convert_column_name_to_int(str) })
                               ]).to_h
       end
-    end.each_slice(2).to_h
+    end.reverse.each_slice(2).to_h
   end
 
   def convert_column_name_to_int(name)

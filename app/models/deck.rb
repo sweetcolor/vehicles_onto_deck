@@ -1,12 +1,17 @@
 class Deck
-  attr_reader :max_height, :length, :width, :cells, :vehicles_location
+  attr_reader :max_height, :length, :width, :cells, :vehicles_position, :vehicles_location, :lane_line
+  attr_accessor :special_height_cell_colour
 
-  def initialize(length, width)
+  def initialize(length, width, lane_line)
     @length = length
     @width = width
+    @lane_line = lane_line
     @cells = nil
+    @colour_cells = nil
     @max_height = 0
+    @vehicles_position = Array.new
     @vehicles_location = Hash.new
+    @special_height_cell_colour = nil
   end
 
   def to_s
@@ -18,12 +23,18 @@ class Deck
   end
 
   def make_deck_cells(std_height, exception_height)
-    @max_height = [std_height, exception_height.values.max].max
+    @max_height = [std_height, exception_height.keys.max].max
     cells = Array.new(@length) {
-      Array.new(@width, Cell.new({ height: std_height, name: std_height, filled: FALSE }))
+      Array.new(@width, Cell.new({ height: std_height, name: std_height, filled: FALSE,
+                                   colour: @special_height_cell_colour[std_height][:colour] }))
     }
     exception_height.each_pair do |key, val|
-      key[:width].each { |i| key[:length].each { |j| cells[i][j] = Cell.new({ height: val, name: val, filled: FALSE }) } }
+      val[:width].each do |i|
+        val[:length].each do |j|
+          cells[i][j] = Cell.new({ height: key, name: key, filled: FALSE,
+                                   colour: @special_height_cell_colour[key][:colour] })
+        end
+      end
     end
     @cells = cells.deep_dup
   end
@@ -53,6 +64,10 @@ class Deck
     # { fitted: fitted, small_height_end_cursor: small_height_end_cursor, not_enough_free_space: not_enough_free_space }
   end
 
+  def sort_vehicles_position
+    @vehicles_position.sort_by! { |v| [v[:area].begin_cursor.width, v[:area].begin_cursor.length] }
+  end
+
   def put_vehicle_onto_deck(vehicle, veh_area)
     veh_area.length.each do |i|
       veh_area.width.each do |j|
@@ -65,6 +80,7 @@ class Deck
     range = {width: veh_beg_cur.width..veh_end_cur.width, length: veh_beg_cur.length..veh_end_cur.length }
     @vehicles_location[vehicle.name] = Hash.new unless @vehicles_location.has_key?(vehicle.name)
     @vehicles_location[vehicle.name][range] = FALSE
+    @vehicles_position << {vehicle: vehicle, area: veh_area }
   end
 
   def method_missing(name, *args)

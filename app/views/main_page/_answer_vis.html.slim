@@ -1,4 +1,4 @@
-/table
+table
 /  - @parsed_query.each_pair do |key, item|
 /    tr
 /      td = key
@@ -19,19 +19,24 @@
 /      - for col in row
 /        td
 /          = col.name
+
 table class="vehicles-visual vehicles"
   tr
     th
     - cells.first.each_index do |i|
-      th
+      th.vehicles-table-cell-number
         = i
-  - while row < cells.length
+  - while row < deck.length
     tr
+      - if (row+1) % 20 == 0
+        th.vehicles-table-cell-number
+          = row+1
+      - else
+        th.vehicles-table-empty-number
+          |
       - if col.zero?
-        th
-          = row
-        /- col = passed_map[row]
-      - while col < cells.first.length
+        - col = passed_map[row]
+      - while col < deck.width
         - name = cells[row][col].name
         - if deck.vehicles_location.has_key?(name)
           - range = check_if_drawn_vehicle(name, row, col)
@@ -51,5 +56,21 @@ table class="vehicles-visual vehicles"
             = name
       - col = 0
       - row += 1
+
+.vehicles-visual-table.vehicles
+  - cells.each_with_index do |row, i|
+    - row.each_with_index do |cell, j|
+      .vehicles-visual-cell-colour id="c#{i}_#{j}"
+        |
+  - position.each do |pos|
+    /.vehicles-visual-row
+    /- row.each_with_index do |cell, j|
+    - i = pos[:area].begin_cursor.length
+    - j = pos[:area].begin_cursor.width
+    .vehicles-visual-cell id="a#{i}_#{j}"
+      = pos[:vehicle].name
+  - lane[:column].times do |i|
+    .vehicles-visual-line id="l#{i}"
+
 
 = render partial: 'main_page/answer_yna', locals: { answer: @answer, vehicles_location: @deck.vehicles_location }

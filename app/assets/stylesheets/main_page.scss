@@ -4,45 +4,45 @@
 
 .vehicles {
   margin-right: 50px;
+  font-family:"Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size:14px;
 }
 
-.vehicles-visual {
-  width: 45%;
+.vehicles-visual-table {
   float: left;
-  table {
+  width: 45%;
+  height: 100%;
+  margin: 0 20px;
+  position: relative;
+  border: solid;
+
+  .vehicles-visual-row {
   }
 
-  td {
-    font-family:Arial, sans-serif;
-    font-size:14px;
+  .vehicles-visual-line {
+    border-right: 2px dashed;
+    position: absolute;
+
+  }
+
+  .vehicles-visual-cell-colour {
+    position: absolute;
+  }
+
+  .vehicles-visual-cell {
+    position: absolute;
+    //padding:2px 2px;
+    overflow:hidden;
+    word-break:normal;
+    text-align:center;
+    vertical-align:middle;
     border: 1px solid;
-    overflow:hidden;
-    word-break:normal;
-
-    text-align:center;
-    vertical-align:center;
-    width: 15px;
-  }
-
-  th {
-    font-family:Arial, sans-serif;
-    font-size:14px;
-    padding:5px 5px;
-    overflow:hidden;
-    word-break:normal;
-    text-align:center;
-    vertical-align:center;
-    width: 20px;
   }
 }
 
 .vehicles-location {
   width: 35%;
-  font-family:Arial, sans-serif;
-  table {
-
-  }
-
+  float: right;
   th {
     font-size:24px;
     text-align:center;
