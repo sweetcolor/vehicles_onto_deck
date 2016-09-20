@@ -1,6 +1,6 @@
-- if @parsed_query[:a].first == 'yn'
+- if @parsed_query[:a] == 'yn' || @parsed_query[:a].first == 'yn'
   = render partial: 'main_page/answer_yn', locals: { answer: @answer }
-- if @parsed_query[:a].first == 'yna'
+- if @parsed_query[:a] == 'yna' || @parsed_query[:a].first == 'yna'
   = render partial: 'main_page/answer_yna', locals: { answer: @answer, vehicles_location: @deck.vehicles_location }
 - if @parsed_query[:a].first == 'vis'
   .vehicles-location-float
