@@ -20,43 +20,43 @@ table
 /        td
 /          = col.name
 
-table class="vehicles-visual vehicles"
-  tr
-    th
-    - cells.first.each_index do |i|
-      th.vehicles-table-cell-number
-        = i
-  - while row < deck.length
-    tr
-      - if (row+1) % 20 == 0
-        th.vehicles-table-cell-number
-          = row+1
-      - else
-        th.vehicles-table-empty-number
-          |
-      - if col.zero?
-        - col = passed_map[row]
-      - while col < deck.width
-        - name = cells[row][col].name
-        - if deck.vehicles_location.has_key?(name)
-          - range = check_if_drawn_vehicle(name, row, col)
-          - if range
-            - if deck.vehicles_location[name][range]
-              - col += 1
-            - else
-              - col += range[:width].size
-              - deck.vehicles_location[name][range] = TRUE
-              td colspan="#{range[:width].size}" rowspan="#{range[:length].size}"
-                = name
-          - else
-            - col += 1
-        - else
-          - col += 1
-          td
-            = name
-      - col = 0
-      - row += 1
-
+/table class="vehicles-visual vehicles"
+/  tr
+/    th
+/    - cells.first.each_index do |i|
+/      th.vehicles-table-cell-number
+/        = i
+/  - while row < deck.length
+/    tr
+/      - if (row+1) % 20 == 0
+/        th.vehicles-table-cell-number
+/          = row+1
+/      - else
+/        th.vehicles-table-empty-number
+/          |
+/      - if col.zero?
+/        - col = passed_map[row]
+/      - while col < deck.width
+/        - name = cells[row][col].name
+/        - if deck.vehicles_location.has_key?(name)
+/          - range = check_if_drawn_vehicle(name, row, col)
+/          - if range
+/            - if deck.vehicles_location[name][range]
+/              - col += 1
+/            - else
+/              - col += range[:width].size
+/              - deck.vehicles_location[name][range] = TRUE
+/              td colspan="#{range[:width].size}" rowspan="#{range[:length].size}"
+/                = name
+/          - else
+/            - col += 1
+/        - else
+/          - col += 1
+/          td
+/            = name
+/      - col = 0
+/      - row += 1
+/
 .vehicles-visual-table.vehicles
   - cells.each_with_index do |row, i|
     - row.each_with_index do |cell, j|
