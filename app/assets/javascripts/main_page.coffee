@@ -51,7 +51,7 @@
       next_cursors[(end_width+1) + '_' + begin_height] = { left: curr_cursor.left + curr_cell_width+1, top: curr_cursor.top }
       a.width(curr_cell_width)
       a.height(curr_cell_height)
-      a.css({ left: curr_cursor.left, top: curr_cursor.top })
+      a.css({ left: curr_cursor.left, top: curr_cursor.top, "background-color": "rgb("+deck.std_colour.join(',')+")" })
       delete next_cursors[curcor_name]
 
     lane_width = width_full / (deck.lane_line.column+1)
