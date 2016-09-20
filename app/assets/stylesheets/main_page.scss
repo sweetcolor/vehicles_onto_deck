@@ -17,7 +17,7 @@
   margin: 0 20px;
   position: relative;
   border: 2px solid;
-  padding: 2px;
+  //padding: 2px;
 
   .vehicles-visual-row {
   }
@@ -45,7 +45,6 @@
 
 .vehicles-location {
   width: 35%;
-  float: right;
   th {
     font-size:24px;
     text-align:center;
@@ -57,4 +56,8 @@
     font-size: 16px;
     border-bottom: dotted 1px;
   }
+}
+
+.vehicles-location-float {
+  float: right;
 }

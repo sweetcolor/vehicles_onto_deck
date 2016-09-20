@@ -25,9 +25,9 @@ class Deck
     '[[%s, %s]]' % [@width, @length]
   end
 
-  def make_deck_cells(std_height, exception_height)
+  def make_deck_cells(std_height, exception_height, vis)
     @max_height = [std_height, exception_height.keys.max].max
-    @std_colour = @special_height_cell_colour[std_height][:colour]
+    @std_colour = @special_height_cell_colour[std_height][:colour] if vis
     cells = Array.new(@length) {
       Array.new(@width, Cell.new({ height: std_height, name: std_height, filled: FALSE}))
     }
@@ -35,8 +35,10 @@ class Deck
       val[:length].each do |i|
         val[:width].each do |j|
           cells[i][j] = Cell.new({ height: key, name: key, filled: FALSE })
-          @exception_colour[key] = val
-          @exception_colour[key][:colour] = @special_height_cell_colour[key][:colour]
+          if vis
+            @exception_colour[key] = val
+            @exception_colour[key][:colour] = @special_height_cell_colour[key][:colour]
+          end
         end
       end
     end

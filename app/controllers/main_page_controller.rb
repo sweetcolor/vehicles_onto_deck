@@ -9,7 +9,7 @@ class MainPageController < ApplicationController
     @deck = Deck.new(@parsed_query[:deck_length], @parsed_query[:deck_width], @parsed_query[:LL])
     @deck.special_height_cell_colour = @parsed_query[:SHC]
     @deck.vehicles = @parsed_query[:rv].map { |v| v[:name] }.to_set
-    @deck.make_deck_cells(@parsed_query[:stdmax], @parsed_query[:EX])
+    @deck.make_deck_cells(@parsed_query[:stdmax], @parsed_query[:EX], vis_answer?)
     area = Area.new(CellCursor.new(0, 0), CellCursor.new(@deck.width-1, @deck.length-1))
     @areas = Areas.new([area], @parsed_query[:placement])
     fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
@@ -107,5 +107,9 @@ class MainPageController < ApplicationController
 
   def remove_too_high_vehicle(vehicles)
     vehicles.map { |veh| veh if veh[:height] <= @deck.max_height }.compact
+  end
+
+  def vis_answer?
+    @parsed_query[:a].first == 'vis'
   end
 end

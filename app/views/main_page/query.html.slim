@@ -3,6 +3,7 @@
 - if @parsed_query[:a].first == 'yna'
   = render partial: 'main_page/answer_yna', locals: { answer: @answer, vehicles_location: @deck.vehicles_location }
 - if @parsed_query[:a].first == 'vis'
+  .vehicles-location-float
   = render partial: 'main_page/answer_vis', locals: { deck: @deck, cells: @deck.cells, location: @deck.vehicles_location,
           position: @deck.vehicles_position, lane: @deck.lane_line, shc: @deck.special_height_cell_colour,
           row: 0, col: 0, passed_map: Array.new(@deck.length, 0) }

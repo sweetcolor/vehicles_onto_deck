@@ -61,6 +61,12 @@
       line.width("1px")
       colour = deck.lane_line.colour.join(',')
       line.css({ left: i*lane_width+(i-1), top: 0, 'border-color': "rgb("+colour+")" })
+    wrapper.width(wrapper.width()+4)
+    width_full = wrapper.width()
+    width = width_full / deck.width
+    height_full = wrapper.height()
+    height = height_full / deck.length
+    cell = { width: width, height: height }
 
     Object.keys(deck.exception_colour).forEach (height) ->
       c = $('#c'+height)
