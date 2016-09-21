@@ -1,3 +1,6 @@
+///////////////////////////////
+/ DEBUG VERSION
+///////////////////////////////
 /table
 /  - @parsed_query.each_pair do |key, item|
 /    tr
@@ -12,7 +15,7 @@
 /      - deck.first.each_index do |i|
 /        th
 /          = i
-/  - deck.each_with_index do |row, idx|
+/  - deck.cells.each_with_index do |row, idx|
 /    tr
 /      th
 /        = idx
@@ -56,7 +59,12 @@
 /            = name
 /      - col = 0
 /      - row += 1
-/
+
+
+////////////////////////////////
+/ PRODUCTION VERSION
+////////////////////////////////
+
 .vehicles-visual-table.vehicles
   - deck.exception_colour.keys.each do |height|
     .vehicles-visual-cell-colour id="c#{height}"

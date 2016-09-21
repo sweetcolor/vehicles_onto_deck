@@ -30,7 +30,6 @@
     height_full = wrapper.height()
     height = height_full / deck.length
     cell = { width: width, height: height }
-    console.log cell
     next_cursors = { '0_0': { left: 0, top: 0 } }
     deck.vehicles_position.forEach (e) ->
       begin_width = e.area.begin_cursor.width

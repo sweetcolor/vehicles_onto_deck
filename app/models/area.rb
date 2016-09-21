@@ -114,19 +114,19 @@ class Area
     new_areas = Hash.new
     veh_begin_cursor, veh_end_cursor = veh_area.begin_cursor, veh_area.end_cursor
     area_begin_cursor, area_end_cursor  = area.begin_cursor, area.end_cursor
-    unless veh_begin_cursor.width == area_begin_cursor.width
+    if veh_begin_cursor.width > area_begin_cursor.width
       push_new_area(new_areas, area_begin_cursor.deep_dup, CellCursor.new(veh_begin_cursor.width-1, area_end_cursor.length),
                     {right: [veh_begin_cursor.length..veh_end_cursor.length]})
     end
-    unless veh_end_cursor.length == area_end_cursor.length
+    if veh_end_cursor.length < area_end_cursor.length
       push_new_area(new_areas, CellCursor.new(area_begin_cursor.width, veh_end_cursor.length+1), area_end_cursor.deep_dup,
                     {top: [veh_begin_cursor.width..veh_end_cursor.width]})
     end
-    unless veh_end_cursor.width == area_end_cursor.width
+    if veh_end_cursor.width < area_end_cursor.width
       push_new_area(new_areas, CellCursor.new(veh_end_cursor.width+1, area_begin_cursor.length), area_end_cursor.deep_dup,
                     {left: [veh_begin_cursor.length..veh_end_cursor.length]})
     end
-    unless veh_begin_cursor.length == area_begin_cursor.length
+    if veh_begin_cursor.length > area_begin_cursor.length
       push_new_area(new_areas, area_begin_cursor.deep_dup, CellCursor.new(area_end_cursor.width, veh_begin_cursor.length-1),
                     {top: [veh_begin_cursor.width..veh_end_cursor.width]})
     end
