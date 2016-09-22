@@ -3,19 +3,33 @@ class MainPageController < ApplicationController
   end
 
   def query
-    @cursor = { width: 0, length: 0 }
-    @inserted_vehicles = Hash.new
     @parsed_query = Parser.new(params[:query]).parse
-    @deck = Deck.new(@parsed_query[:deck_length], @parsed_query[:deck_width], @parsed_query[:LL])
-    @deck.special_height_cell_colour = @parsed_query[:SHC]
-    @deck.vehicles = @parsed_query[:rv].map { |v| v[:name] }.to_set
-    @deck.make_deck_cells(@parsed_query[:stdmax], @parsed_query[:EX], vis_answer?)
-    area = Area.new(CellCursor.new(0, 0), CellCursor.new(@deck.width-1, @deck.length-1))
-    @areas = Areas.new([area], @parsed_query[:placement])
-    fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
-    insert_standard_vehicle
-    @answer = get_answer
-    @deck.sort_vehicles_position
+    reinitialize
+    if b_placement?
+      ul_placement = 'UL'
+      fit_vehicles(ul_placement)
+      ul_deck = @deck.deep_dup
+      ul_inserted_vehicles = @inserted_vehicles.deep_dup
+      ul_answer = @answer
+
+      reinitialize
+      lu_placement = 'LU'
+      fit_vehicles(lu_placement)
+      lu_deck = @deck.deep_dup
+      lu_inserted_vehicles = @inserted_vehicles.deep_dup
+      lu_answer = @answer
+      if compare_results_of_placements(ul_answer, ul_inserted_vehicles, lu_answer, lu_inserted_vehicles) == ul_placement
+        @deck = ul_deck
+        @answer = ul_answer
+        @inserted_vehicles = ul_inserted_vehicles
+      else
+        @deck = lu_deck
+        @answer = lu_answer
+        @inserted_vehicles = lu_inserted_vehicles
+      end
+    else
+      fit_vehicles(@parsed_query[:placement])
+    end
     respond_to do |format|
       format.html
       format.json { render json: @deck }
@@ -23,6 +37,44 @@ class MainPageController < ApplicationController
   end
 
   private
+
+  def reinitialize
+    @inserted_vehicles = Hash.new
+    @deck = Deck.new(@parsed_query[:deck_length], @parsed_query[:deck_width], @parsed_query[:LL])
+    @deck.special_height_cell_colour = @parsed_query[:SHC]
+    @deck.vehicles = @parsed_query[:rv].map { |v| v[:name] }.to_set
+    @deck.make_deck_cells(@parsed_query[:stdmax], @parsed_query[:EX], vis_answer?)
+  end
+
+  def compare_results_of_placements(ul_answer, ul_inserted_vehicles, lu_answer, lu_inserted_vehicles)
+    best_placement = 'UL'
+    if ul_answer[:fitted_veh_count] > lu_answer[:fitted_veh_count]
+      best_placement = 'UL'
+    elsif ul_answer[:fitted_veh_count] < lu_answer[:fitted_veh_count]
+      best_placement = 'LU'
+    else
+      @parsed_query[:SV].each do |std_veh|
+        if ul_inserted_vehicles[std_veh.name] > lu_inserted_vehicles[std_veh.name]
+          best_placement = 'UL'
+          break
+        elsif ul_inserted_vehicles[std_veh.name] < lu_inserted_vehicles[std_veh.name]
+          best_placement = 'LU'
+          break
+        end
+      end
+    end
+    best_placement
+  end
+
+  def fit_vehicles(placement)
+    @parsed_query[:placement] = placement
+    area = Area.new(CellCursor.new(0, 0), CellCursor.new(@deck.width-1, @deck.length-1))
+    @areas = Areas.new([area], @parsed_query[:placement])
+    fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
+    insert_standard_vehicle
+    @answer = get_answer
+    @deck.prepare_to_drawing
+  end
 
   def get_answer
     count_fitted = count_real_vehicle_fitted
@@ -81,6 +133,7 @@ class MainPageController < ApplicationController
       next_areas_to_small_height.merge!(area.deep_dup.put_vehicle(small_height_area, copy_areas.areas_hash))
       next_areas_to_small_height[:old_areas][area.name] = area
       begin
+        # TODO if veh not fit
         copy_areas.reset(next_areas_to_small_height[:new_areas], next_areas_to_small_height[:old_areas])
         area = copy_areas.get_next
         veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
@@ -111,5 +164,9 @@ class MainPageController < ApplicationController
 
   def vis_answer?
     @parsed_query[:a].first == 'vis'
+  end
+
+  def b_placement?
+    @parsed_query[:placement] == 'B'
   end
 end

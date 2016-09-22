@@ -6,13 +6,17 @@
           | All vehicles were fit successfully
         - else
           | #{answer[:fitted_veh_count]} vehicles were fit successfully
-    - vehicles_location.slice(*@parsed_query[:rv].map { |v| v[:name] }).each_pair do |name, range|
+    - @parsed_query[:rv].map { |v| v[:name] }.each do |name|
       tr
         td
           = name
-        - for r in range.keys
+        - if @inserted_vehicles[name] == 1
+          - vehicles_location[name].each do |range|
+            td
+              | #{(range[:width].begin+'a'.ord).chr.upcase}#{range[:length].begin+1}..#{(range[:width].end+'a'.ord).chr.upcase}#{range[:length].end+1}
+        - else
           td
-            | #{(r[:width].begin+'a'.ord).chr.upcase}#{r[:length].begin+1}..#{(r[:width].end+'a'.ord).chr.upcase}#{r[:length].end+1}
+            | cannot fit
     - @parsed_query[:SV].each do |veh|
       tr
         td width="350"
