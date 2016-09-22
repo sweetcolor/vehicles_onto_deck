@@ -18,9 +18,10 @@ class Parser
   private
 
   def parse_query
+    single_value_param = Set.new(%w{deck_width deck_length stdmax sort_order placement LL c})
     url_parameters_hash = Hash.new
     splitted_query = @query.split('~').map { |param| param.split('=') }
-    splitted_query.map! { |e| e.length != 2 ? e.map { |sub_e| sub_e.split('_') }.flatten : e }
+    splitted_query.map! { |e| single_value_param.include?(e.first) ? e : e.map { |sub_e| sub_e.split('_') }.flatten }
     splitted_query.each do |elem_query|
       url_parameters_hash[elem_query.first.to_sym] = if elem_query.length != 2
                                                        elem_query[1..elem_query.length]
@@ -74,7 +75,8 @@ class Parser
   end
 
   def parse_exception_cells
-    @parsed_query[:EX].map.with_index do |cell, i|
+    exception_cells = @parsed_query[:EX]
+    exception_cells.map.with_index do |cell, i|
       if i.odd?
         cell.to_i
       else
