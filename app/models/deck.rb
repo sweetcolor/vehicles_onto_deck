@@ -30,7 +30,7 @@ class Deck
   end
 
   def make_deck_cells(std_height, exception_height, vis)
-    @max_height = [std_height, exception_height.keys.max].max
+    @max_height = exception_height.empty? ? std_height : [std_height, exception_height.keys.max].max
     @std_colour = @special_height_cell_colour[std_height][:colour] if vis && @special_height_cell_colour.include?(std_colour)
     cells = Array.new(@length) {
       Array.new(@width, Cell.new({ height: std_height, name: std_height, filled: FALSE}))
@@ -98,6 +98,7 @@ class Deck
     # @vehicles_location[vehicle.name] = Hash.new unless @vehicles_location.has_key?(vehicle.name)
     # @vehicles_location[vehicle.name][range] = FALSE
     @vehicles_position << {vehicle: vehicle, area: veh_area } if @vehicles.include?(vehicle.name)
+    # @vehicles_position << {vehicle: vehicle, area: veh_area }
   end
 
   def max_quantity_veh_in_row_or_col

@@ -9,7 +9,7 @@ class Parser
     @parsed_query[:sort_order] = parse_sort_order
     @parsed_query[:rv] = parse_real_vehicle
     @parsed_query[:SV] = parse_standard_vehicle
-    @parsed_query[:EX] = parse_exception_cells
+    @parsed_query[:EX] = @parsed_query.include?(:EX) ? parse_exception_cells : Hash.new
     @parsed_query[:LL] = parse_lane_line
     @parsed_query[:SHC] = special_height_cell_colour
     @parsed_query
@@ -75,8 +75,7 @@ class Parser
   end
 
   def parse_exception_cells
-    exception_cells = @parsed_query[:EX]
-    exception_cells.map.with_index do |cell, i|
+    @parsed_query[:EX].map.with_index do |cell, i|
       if i.odd?
         cell.to_i
       else

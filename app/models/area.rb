@@ -2,7 +2,6 @@ class Area
   attr_accessor :begin_cursor, :end_cursor, :border_areas, :fitted_sides, :length, :width, :name
 
   def initialize(begin_cursor, end_cursor, fitted_sides={}, border_areas=[])
-    @name = '%s %s' % [begin_cursor, end_cursor]
     @begin_cursor = begin_cursor
     @end_cursor = end_cursor
     @width = @begin_cursor.width..@end_cursor.width
@@ -12,10 +11,11 @@ class Area
     @border_areas = border_areas
     @fitted_sides = fitted_sides
     @side_is_fitted = Hash.new
+    @name = '[%s, %s]' % [@width, @length]
   end
 
   def inspect
-    '[%s, %s]' % [@width, @length]
+    @name
   end
 
   def to_s
@@ -38,13 +38,13 @@ class Area
         (@length.cover?(other_area.length.begin) && @length.cover?(other_area.length.end))
   end
 
-  def try_put_vehicle_in_cross_area(veh_area, area, areas_hash, passed_areas)
+  def try_put_vehicle_in_cross_area(veh_area, areas_hash, passed_areas=Set.new)
     # veh_end_cursor = CellCursor.new(@begin_cursor.width + veh_area.width, @begin_cursor.length + veh_area.length)
     # veh_area = Area.new(@begin_cursor, veh_end_cursor)
-    if area.crossing?(veh_area)
-      length_begin, length_end, width_begin, width_end = area.determine_vehicle_area(veh_area)
+    if crossing?(veh_area)
+      length_begin, length_end, width_begin, width_end = determine_vehicle_area(veh_area)
       veh_area = Area.new(CellCursor.new(width_begin, length_begin), CellCursor.new(width_end, length_end))
-      area.put_vehicle(veh_area, areas_hash, passed_areas)
+      put_vehicle(veh_area, areas_hash, passed_areas)
     else
       { new_areas: Hash.new, old_areas: Hash.new }
     end
@@ -91,7 +91,7 @@ class Area
       @border_areas.each do |name|
         unless passed_areas.include?(name)
           areas_hash[name].border_areas.delete(@name)
-          areas_after_putting_vehicle = try_put_vehicle_in_cross_area(veh_area, areas_hash[name], areas_hash, passed_areas)
+          areas_after_putting_vehicle = areas_hash[name].try_put_vehicle_in_cross_area(veh_area, areas_hash, passed_areas)
           if areas_after_putting_vehicle[:new_areas].empty?
             areas_after_putting_vehicle[:new_areas][name] = areas_hash[name]
           else
@@ -103,7 +103,7 @@ class Area
       end
       remove_areas_crossing_veh_area(veh_area, areas_hash)
       remove_overridden
-      find_border_area
+      # find_border_area
       # merge_areas
       # remove_overridden
     end
@@ -141,19 +141,6 @@ class Area
     # @border_areas.each do |border_area|
     #   new_area.border_areas.push(border_area) if new_area.crossing?(border_area)
     # end
-  end
-
-  def find_border_area
-    border_areas = Set.new
-    @new_areas.each_pair do |name_top, area_top|
-      @new_areas.each_pair do |name_sub, area_sub|
-        if !name_top.eql?(name_sub) && area_top.crossing?(area_sub)
-          border_areas.add(name_sub)
-        end
-      end
-      area_top.border_areas = border_areas.to_a
-      border_areas.clear
-    end
   end
 
   def remove_overridden

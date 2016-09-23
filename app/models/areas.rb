@@ -12,6 +12,7 @@ class Areas
 
   def reset(new_areas, old_areas)
     @areas_hash = @areas_hash.delete_if { |key| old_areas.has_key?(key) }.merge(new_areas)
+    find_border_area
     keys = @areas_hash.keys
     keys.each do |key|
       @areas_hash[key].border_areas = sort_border_name_areas(
@@ -26,6 +27,19 @@ class Areas
     #   @areas_array = new_areas + @sorted_array
     # end
     @sorted_array = sort_areas
+  end
+
+  def find_border_area
+    border_areas = Set.new
+    @areas_hash.each_pair do |name_top, area_top|
+      @areas_hash.each_pair do |name_sub, area_sub|
+        if !name_top.eql?(name_sub) && area_top.crossing?(area_sub)
+          border_areas.add(name_sub)
+        end
+      end
+      area_top.border_areas = border_areas.to_a
+      border_areas.clear
+    end
   end
 
   def any_fitted?(not_fitted)

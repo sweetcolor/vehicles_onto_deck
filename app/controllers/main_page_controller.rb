@@ -70,8 +70,9 @@ class MainPageController < ApplicationController
     @parsed_query[:placement] = placement
     area = Area.new(CellCursor.new(0, 0), CellCursor.new(@deck.width-1, @deck.length-1))
     @areas = Areas.new([area], @parsed_query[:placement])
+    @areas_with_exception_height = @areas
     fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
-    insert_standard_vehicle
+    fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
     @answer = get_answer
     @deck.prepare_to_drawing
   end
@@ -83,36 +84,61 @@ class MainPageController < ApplicationController
     { answer: answer, fitted_veh_count: count_fitted, all: all }
   end
 
-  def fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
-    prepare_vehicle(vehicle_type)
-    @vehicles.each do |veh|
-      areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new  }
-      areas = vehicle_insert_func.call(areas, veh)
-      @areas.reset(areas[:new_areas], areas[:old_areas])
-    end
-  end
-
   def prepare_vehicle(vehicle_type)
     @inserted_vehicles = @parsed_query[vehicle_type].reduce(@inserted_vehicles) { |h, v| h[v[:name]] = 0; h }
     @vehicles = remove_too_high_vehicle(@parsed_query[vehicle_type])
+    @vehicles.each do |vehicle|
+      @parsed_query[:EX].each_pair do |exc_height, exc_range|
+        if vehicle.height > exc_height
+          exc_area = Area.new(
+              CellCursor.new(exc_range[:width].begin, exc_range[:length].begin),
+              CellCursor.new(exc_range[:width].end, exc_range[:length].end)
+          )
+          vehicle.exception_areas << exc_area
+        end
+      end
+    end
   end
 
-  def insert_real_vehicle(areas, veh)
+  def fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
+    prepare_vehicle(vehicle_type)
+    @vehicles.each do |veh|
+      set_areas(veh)
+      vehicle_insert_func.call(veh)
+    end
+  end
+
+  def set_areas(vehicle)
+    unless vehicle.exception_areas.empty?
+      @areas_with_exception_height = Areas.new(@areas.areas_array, @parsed_query[:placement])
+      vehicle.exception_areas.each do |exc_area|
+        area = @areas_with_exception_height.get_next
+        areas = area.try_put_vehicle_in_cross_area(exc_area, @areas_with_exception_height.areas_hash)
+        @areas_with_exception_height.reset(areas[:new_areas], areas[:old_areas])
+      end
+      exchange_areas
+      @areas.reset(Hash.new, Hash.new)
+    end
+  end
+
+  def exchange_areas
+    @areas, @areas_with_exception_height = @areas_with_exception_height, @areas
+  end
+
+  def insert_real_vehicle(veh)
+    areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new }
     while !@areas.empty? && @inserted_vehicles[veh.name].zero?
       areas = try_insert_vehicle(areas, veh)
     end
-    areas
+    @areas.reset(areas[:new_areas], areas[:old_areas])
   end
 
-  def insert_standard_vehicle
-    prepare_vehicle(:SV)
-    @vehicles.each do |veh|
-      areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new }
-      @areas.reset(areas[:new_areas], areas[:old_areas])
-        while !@areas.empty? && @areas.any_fitted?(areas[:not_fitted_areas])
-          areas = try_insert_vehicle(areas, veh)
-          @areas.reset(areas[:new_areas], areas[:old_areas]) if areas[:not_fitted_areas].empty?
-        end
+  def insert_standard_vehicle(veh)
+    areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new }
+    @areas.reset(areas[:new_areas], areas[:old_areas])
+    while !@areas.empty? && @areas.any_fitted?(areas[:not_fitted_areas])
+      areas = try_insert_vehicle(areas, veh)
+      @areas.reset(areas[:new_areas], areas[:old_areas]) if areas[:not_fitted_areas].empty?
     end
   end
 
@@ -123,31 +149,14 @@ class MainPageController < ApplicationController
     result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, veh_area, area)
     if result_of_checking[:fitted]
       @deck.put_vehicle_onto_deck(veh, veh_area)
+      unless veh.exception_areas.empty?
+        exchange_areas
+        @areas.reset(Hash.new, Hash.new)
+        area = @areas.find_area(area.begin_cursor)
+      end
       areas.merge! area.put_vehicle(veh_area, @areas.areas_hash)
       @inserted_vehicles[veh.name] += 1
       areas[:not_fitted_areas].clear
-    elsif result_of_checking[:too_high]
-      small_height_area = Area.new(veh_begin_cursor, result_of_checking[:small_height_end_cursor])
-      copy_areas = @areas.deep_dup
-      next_areas_to_small_height = areas.deep_dup
-      next_areas_to_small_height.merge!(area.deep_dup.put_vehicle(small_height_area, copy_areas.areas_hash))
-      next_areas_to_small_height[:old_areas][area.name] = area
-      begin
-        # TODO if veh not fit
-        copy_areas.reset(next_areas_to_small_height[:new_areas], next_areas_to_small_height[:old_areas])
-        area = copy_areas.get_next
-        veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
-        veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
-        result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, veh_area, area)
-        if result_of_checking[:fitted]
-          area = @areas.find_area(area.begin_cursor)
-          @deck.put_vehicle_onto_deck(veh, veh_area)
-          areas.merge! area.put_vehicle(veh_area, @areas.areas_hash)
-          @inserted_vehicles[veh.name] += 1
-          areas[:not_fitted_areas].clear
-          break
-        end
-      end until copy_areas.empty?
     else
       areas[:not_fitted_areas].add(area.name)
     end
