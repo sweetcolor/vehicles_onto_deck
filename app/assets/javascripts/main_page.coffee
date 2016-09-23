@@ -31,27 +31,38 @@
     height = height_full / deck.length
     cell = { width: width, height: height }
     next_cursors = { '0_0': { left: 0, top: 0 } }
-    deck.vehicles_position.forEach (e) ->
-      begin_width = e.area.begin_cursor.width
-      begin_height = e.area.begin_cursor.length
+    deck.vehicles_position.forEach (pos) ->
+      begin_width = pos.area.begin_cursor.width
+      begin_height = pos.area.begin_cursor.length
 
-      end_width = e.area.end_cursor.width
-      end_height = e.area.end_cursor.length
+      end_width = pos.area.end_cursor.width
+      end_height = pos.area.end_cursor.length
       a = $('#a'+begin_height+'_'+begin_width)
-      a.addClass('vehicles-visual-cell')
+#      a.addClass('vehicles-visual-cell')
       curr_cell_width = cell.width * (end_width - begin_width + 1)
       curr_cell_height = cell.height * (end_height - begin_height + 1)
-      curcor_name = begin_width + '_' + begin_height
-      if Object.keys(next_cursors).includes(curcor_name)
-        curr_cursor = next_cursors[curcor_name]
-      else
-        curr_cursor = { left: begin_width*cell.width+3, top: begin_height*cell.height+3 }
-      next_cursors[begin_width + '_' + (end_height+1)] = { left: curr_cursor.left, top: curr_cursor.top + curr_cell_height+1 }
-      next_cursors[(end_width+1) + '_' + begin_height] = { left: curr_cursor.left + curr_cell_width+1, top: curr_cursor.top }
       a.width(curr_cell_width)
       a.height(curr_cell_height)
-      a.css({ left: curr_cursor.left, top: curr_cursor.top, "background-color": "rgb("+deck.std_colour.join(',')+")" })
-      delete next_cursors[curcor_name]
+      if pos.aligned_to_top
+        a.addClass('aligned_to_top')
+      else
+        a.height(a.height()-1)
+      if pos.aligned_to_left
+        a.addClass('aligned_to_left')
+      else
+        a.width(a.width()-1)
+
+#      curcor_name = begin_width + '_' + begin_height
+#      if Object.keys(next_cursors).includes(curcor_name)
+#        curr_cursor = next_cursors[curcor_name]
+#      else
+#        curr_cursor = { left: begin_width*cell.width+3, top: begin_height*cell.height+3 }
+#      next_cursors[begin_width + '_' + (end_height+1)] = { left: curr_cursor.left, top: curr_cursor.top + curr_cell_height+1 }
+#      next_cursors[(end_width+1) + '_' + begin_height] = { left: curr_cursor.left + curr_cell_width+1, top: curr_cursor.top }
+      left = cell.width * begin_width
+      top = cell.height * begin_height
+      background_color = "rgb(" + deck.std_colour.join(',') + ")"
+      a.css({ left: left, top: top, "background-color": background_color })
 
     lane_width = width_full / (deck.lane_line.column+1)
     [1..deck.lane_line.column].forEach (i) ->
@@ -59,14 +70,14 @@
       line.height(height_full)
       line.width("1px")
       colour = deck.lane_line.colour.join(',')
-      line.css({ left: i*lane_width+(i-1), top: 0, 'border-color': "rgb("+colour+")" })
-    wrapper.width(wrapper.width()+deck.max_quantity_by_width)
-    wrapper.height(wrapper.height()+deck.max_quantity_by_length)
-    width_full = wrapper.width()
-    width = width_full / deck.width
-    height_full = wrapper.height()
-    height = height_full / deck.length
-    cell = { width: width, height: height }
+      line.css({ left: i*lane_width-1, top: 0, 'border-color': "rgb("+colour+")" })
+#    wrapper.width(wrapper.width()+deck.max_quantity_by_width)
+#    wrapper.height(wrapper.height()+deck.max_quantity_by_length)
+#    width_full = wrapper.width()
+#    width = width_full / deck.width
+#    height_full = wrapper.height()
+#    height = height_full / deck.length
+#    cell = { width: width, height: height }
 
     Object.keys(deck.exception_colour).forEach (height) ->
       c = $('#c'+height)

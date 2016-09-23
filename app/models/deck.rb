@@ -97,8 +97,17 @@ class Deck
     @vehicles_location[vehicle.name] << range
     # @vehicles_location[vehicle.name] = Hash.new unless @vehicles_location.has_key?(vehicle.name)
     # @vehicles_location[vehicle.name][range] = FALSE
-    @vehicles_position << {vehicle: vehicle, area: veh_area } if @vehicles.include?(vehicle.name)
+    @vehicles_position << {vehicle: vehicle, area: veh_area, aligned_to_left: aligned_to_left(veh_area),
+                           aligned_to_top: aligned_to_top(veh_area) } if @vehicles.include?(vehicle.name)
     # @vehicles_position << {vehicle: vehicle, area: veh_area }
+  end
+
+  def aligned_to_top(veh_area)
+    veh_area.length.begin.zero?
+  end
+
+  def aligned_to_left(veh_area)
+    veh_area.width.begin.zero?
   end
 
   def max_quantity_veh_in_row_or_col

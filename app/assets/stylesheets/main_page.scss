@@ -41,6 +41,14 @@
     vertical-align:middle;
     border: 1px solid;
   }
+
+  .aligned_to_left {
+    border-left: 0;
+  }
+
+  .aligned_to_top {
+    border-top: 0;
+  }
 }
 
 .vehicles-location {
