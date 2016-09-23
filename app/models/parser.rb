@@ -23,7 +23,7 @@ class Parser
     splitted_query = @query.split('~').map { |param| param.split('=') }
     splitted_query.map! { |e| single_value_param.include?(e.first) ? e : e.map { |sub_e| sub_e.split('_') }.flatten }
     splitted_query.each do |elem_query|
-      url_parameters_hash[elem_query.first.to_sym] = if elem_query.length != 2
+      url_parameters_hash[elem_query.first.to_sym] = if !single_value_param.include?(elem_query.first) && !sv_param_key?(elem_query.first)
                                                        elem_query[1..elem_query.length]
                                                      else
                                                        val = elem_query[elem_query.length-1].split(',').map do |e|
@@ -33,6 +33,10 @@ class Parser
                                                      end
     end
     url_parameters_hash
+  end
+
+  def sv_param_key?(param_key)
+    param_key =~ /sv/
   end
 
   def parse_lane_line
@@ -51,7 +55,7 @@ class Parser
   end
 
   def parse_standard_vehicle
-    create_vehicles_hash(@parsed_query.select { |k| k =~ /sv/})
+    create_vehicles_hash(@parsed_query.select { |k| sv_param_key?(k)})
   end
 
   def parse_real_vehicle
