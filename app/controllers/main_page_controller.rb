@@ -4,7 +4,6 @@ class MainPageController < ApplicationController
 
   def query
     @parsed_query = Parser.new(params[:query]).parse
-    reinitialize
     draw_deck
     respond_to do |format|
       format.html
@@ -15,6 +14,7 @@ class MainPageController < ApplicationController
   private
 
   def draw_deck
+    reinitialize
     if b_placement?
       ul_placement = 'UL'
       fit_vehicles(ul_placement)
@@ -149,7 +149,7 @@ class MainPageController < ApplicationController
     area = @areas.get_next
     veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
     veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
-    result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, veh_area, area)
+    result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, area)
     if result_of_checking[:fitted]
       @deck.put_vehicle_onto_deck(veh, veh_area)
       unless veh.exception_areas.empty?

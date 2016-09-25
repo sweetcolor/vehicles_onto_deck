@@ -1,70 +1,3 @@
-///////////////////////////////
-/ DEBUG VERSION
-///////////////////////////////
-/table
-/  - @parsed_query.each_pair do |key, item|
-/    tr
-/      td = key
-/      td = item.to_s
-/p +++++++++++++++++++++++++++++++++++++++++++++++++++
-/= @inserted_vehicles
-/p +++++++++++++++++++++++++++++++++++++++++++++++++++
-/table
-/  tr
-/    th
-/      - deck.first.each_index do |i|
-/        th
-/          = i
-/  - deck.cells.each_with_index do |row, idx|
-/    tr
-/      th
-/        = idx
-/      - for col in row
-/        td
-/          = col.name
-
-/table class="vehicles-visual vehicles"
-/  tr
-/    th
-/    - cells.first.each_index do |i|
-/      th.vehicles-table-cell-number
-/        = i
-/  - while row < deck.length
-/    tr
-/      - if (row+1) % 20 == 0
-/        th.vehicles-table-cell-number
-/          = row+1
-/      - else
-/        th.vehicles-table-empty-number
-/          |
-/      - if col.zero?
-/        - col = passed_map[row]
-/      - while col < deck.width
-/        - name = cells[row][col].name
-/        - if deck.vehicles_location.has_key?(name)
-/          - range = check_if_drawn_vehicle(name, row, col)
-/          - if range
-/            - if deck.vehicles_location[name][range]
-/              - col += 1
-/            - else
-/              - col += range[:width].size
-/              - deck.vehicles_location[name][range] = TRUE
-/              td colspan="#{range[:width].size}" rowspan="#{range[:length].size}"
-/                = name
-/          - else
-/            - col += 1
-/        - else
-/          - col += 1
-/          td
-/            = name
-/      - col = 0
-/      - row += 1
-
-
-////////////////////////////////
-/ PRODUCTION VERSION
-////////////////////////////////
-
 .vehicles-visual-table.vehicles
   - deck.exception_colour.keys.each do |height|
     .vehicles-visual-cell-colour id="c#{height}"
@@ -80,4 +13,4 @@
       = pos[:vehicle].name
 
 
-= render partial: 'main_page/answer_yna', locals: { answer: @answer, vehicles_location: @deck.vehicles_location }
+= render partial: 'main_page/answer_yna', locals: { answer: @answer, vehicles_location: deck.vehicles_location }

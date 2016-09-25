@@ -24,19 +24,6 @@ class Areas
     @sorted_array = sort_areas
   end
 
-  def find_border_area
-    border_areas = Set.new
-    @areas_hash.each_pair do |name_top, area_top|
-      @areas_hash.each_pair do |name_sub, area_sub|
-        if !name_top.eql?(name_sub) && area_top.crossing?(area_sub)
-          border_areas.add(name_sub)
-        end
-      end
-      area_top.border_areas = border_areas.to_a
-      border_areas.clear
-    end
-  end
-
   def any_fitted?(not_fitted)
     !(areas_array.to_set - not_fitted).empty?
   end
@@ -58,6 +45,19 @@ class Areas
   end
 
   private
+
+  def find_border_area
+    border_areas = Set.new
+    @areas_hash.each_pair do |name_top, area_top|
+      @areas_hash.each_pair do |name_sub, area_sub|
+        if !name_top.eql?(name_sub) && area_top.crossing?(area_sub)
+          border_areas.add(name_sub)
+        end
+      end
+      area_top.border_areas = border_areas.to_a
+      border_areas.clear
+    end
+  end
 
   def sort_areas(arr=nil)
     arr = arr.nil? ? @areas_array : arr
