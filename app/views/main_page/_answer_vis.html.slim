@@ -5,8 +5,6 @@
   - lane[:column].times do |i|
     .vehicles-visual-line id="l#{i}"
   - position.each do |pos|
-    /.vehicles-visual-row
-    /- row.each_with_index do |cell, j|
     - i = pos[:area].begin_cursor.length
     - j = pos[:area].begin_cursor.width
     .vehicles-visual-cell id="a#{i}_#{j}"
