@@ -5,6 +5,16 @@ class MainPageController < ApplicationController
   def query
     @parsed_query = Parser.new(params[:query]).parse
     reinitialize
+    draw_deck
+    respond_to do |format|
+      format.html
+      format.json { render json: @deck }
+    end
+  end
+
+  private
+
+  def draw_deck
     if b_placement?
       ul_placement = 'UL'
       fit_vehicles(ul_placement)
@@ -30,13 +40,7 @@ class MainPageController < ApplicationController
     else
       fit_vehicles(@parsed_query[:placement])
     end
-    respond_to do |format|
-      format.html
-      format.json { render json: @deck }
-    end
   end
-
-  private
 
   def reinitialize
     @inserted_vehicles = Hash.new
@@ -74,7 +78,6 @@ class MainPageController < ApplicationController
     fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
     fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
     @answer = get_answer
-    @deck.prepare_to_drawing
   end
 
   def get_answer

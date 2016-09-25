@@ -3,25 +3,6 @@
   get_css_sum_int_value = (elem, style) ->
     elem.css(style).split(' ').map((e) -> parseInt(e, 10)).reduce ((a, b) -> a + b), 0
 
-  get_max = (array) ->
-    max = array[0]
-    array[1..-1].forEach (e)->
-      if e > max
-        max = e
-    max
-
-  find_nearest_cursor = (height, width, cursors) ->
-    nearest = 100000000
-    nearest_cursor = null
-    Object.keys(cursors).forEach((name)->
-      splitted = name.split("_")
-      distance = Math.abs(height - parseInt(splitted[1])) + Math.abs(width - parseInt(splitted[0]))
-      if (nearest_cursor > distance)
-        nearest = distance
-        nearest_cursor = cursors[name]
-    )
-    nearest_cursor
-
   ajax.done((deck) ->
     wrapper = $(".vehicles-visual-table")
     wrapper.css("background-color", "rgb("+deck.std_colour.join(',')+")")
@@ -38,7 +19,6 @@
       end_width = pos.area.end_cursor.width
       end_height = pos.area.end_cursor.length
       a = $('#a'+begin_height+'_'+begin_width)
-#      a.addClass('vehicles-visual-cell')
       curr_cell_width = cell.width * (end_width - begin_width + 1)
       curr_cell_height = cell.height * (end_height - begin_height + 1)
       a.width(curr_cell_width)
@@ -51,14 +31,6 @@
         a.addClass('aligned_to_left')
       else
         a.width(a.width()-1)
-
-#      curcor_name = begin_width + '_' + begin_height
-#      if Object.keys(next_cursors).includes(curcor_name)
-#        curr_cursor = next_cursors[curcor_name]
-#      else
-#        curr_cursor = { left: begin_width*cell.width+3, top: begin_height*cell.height+3 }
-#      next_cursors[begin_width + '_' + (end_height+1)] = { left: curr_cursor.left, top: curr_cursor.top + curr_cell_height+1 }
-#      next_cursors[(end_width+1) + '_' + begin_height] = { left: curr_cursor.left + curr_cell_width+1, top: curr_cursor.top }
       left = cell.width * begin_width
       top = cell.height * begin_height
       background_color = "rgb(" + deck.std_colour.join(',') + ")"
@@ -71,13 +43,6 @@
       line.width("1px")
       colour = deck.lane_line.colour.join(',')
       line.css({ left: i*lane_width-1, top: 0, 'border-color': "rgb("+colour+")" })
-#    wrapper.width(wrapper.width()+deck.max_quantity_by_width)
-#    wrapper.height(wrapper.height()+deck.max_quantity_by_length)
-#    width_full = wrapper.width()
-#    width = width_full / deck.width
-#    height_full = wrapper.height()
-#    height = height_full / deck.length
-#    cell = { width: width, height: height }
 
     Object.keys(deck.exception_colour).forEach (height) ->
       c = $('#c'+height)

@@ -7,8 +7,6 @@ class Area
     @width = @begin_cursor.width..@end_cursor.width
     @length = @begin_cursor.length..@end_cursor.length
     @border_areas = border_areas
-    @fitted_sides = fitted_sides
-    @side_is_fitted = Hash.new
     @name = '[%s, %s]' % [@width, @length]
   end
 
