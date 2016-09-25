@@ -51,7 +51,6 @@ class Deck
 
   def check_fit_vehicle_onto_deck(vehicle, veh_area, area)
     small_height_end_cursor = CellCursor.new(-1, -1)
-    # not_enough_free_space = FALSE
     too_high = FALSE
     fitted = TRUE
     if area.length.size >= vehicle.length && area.width.size >= vehicle.width
@@ -71,7 +70,6 @@ class Deck
       fitted = FALSE
     end
     { fitted: fitted, small_height_end_cursor: small_height_end_cursor, too_high: too_high }
-    # { fitted: fitted, small_height_end_cursor: small_height_end_cursor, not_enough_free_space: not_enough_free_space }
   end
 
   def prepare_to_drawing
@@ -99,7 +97,6 @@ class Deck
     # @vehicles_location[vehicle.name][range] = FALSE
     @vehicles_position << {vehicle: vehicle, area: veh_area, aligned_to_left: aligned_to_left(veh_area),
                            aligned_to_top: aligned_to_top(veh_area) } if @vehicles.include?(vehicle.name)
-    # @vehicles_position << {vehicle: vehicle, area: veh_area }
   end
 
   def aligned_to_top(veh_area)

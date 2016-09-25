@@ -6,8 +6,6 @@ class Areas
     @areas_hash = areas_array.reduce({}) { |hash, area| hash[area.name] = area; hash }
     @placement = placement
     @sorted_array = sort_areas
-    # @sorted_by_width = sort_by_width
-    # @sorted_by_length = sort_by_length
   end
 
   def reset(new_areas, old_areas)
@@ -23,9 +21,6 @@ class Areas
       )
     end
     @areas_array = @areas_hash.values
-    # unless new_areas.empty?
-    #   @areas_array = new_areas + @sorted_array
-    # end
     @sorted_array = sort_areas
   end
 
