@@ -13,9 +13,9 @@ class Areas
     find_border_area
     keys = @areas_hash.keys
     keys.each do |key|
-      @areas_hash[key].border_areas = sort_border_name_areas(
+      @areas_hash[key].crossed_areas = sort_border_name_areas(
           @areas_hash[key],
-          @areas_hash[key].border_areas.delete_if do |border_area_key|
+          @areas_hash[key].crossed_areas.delete_if do |border_area_key|
             !@areas_hash.has_key?(border_area_key)
           end
       )
@@ -47,15 +47,15 @@ class Areas
   private
 
   def find_border_area
-    border_areas = Set.new
+    crossed_areas = Set.new
     @areas_hash.each_pair do |name_top, area_top|
       @areas_hash.each_pair do |name_sub, area_sub|
         if !name_top.eql?(name_sub) && area_top.crossing?(area_sub)
-          border_areas.add(name_sub)
+          crossed_areas.add(name_sub)
         end
       end
-      area_top.border_areas = border_areas.to_a
-      border_areas.clear
+      area_top.crossed_areas = crossed_areas.to_a
+      crossed_areas.clear
     end
   end
 

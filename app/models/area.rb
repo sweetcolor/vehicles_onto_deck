@@ -1,12 +1,12 @@
 class Area
-  attr_accessor :begin_cursor, :end_cursor, :border_areas, :fitted_sides, :length, :width, :name
+  attr_accessor :begin_cursor, :end_cursor, :crossed_areas, :fitted_sides, :length, :width, :name
 
-  def initialize(begin_cursor, end_cursor, border_areas=[])
+  def initialize(begin_cursor, end_cursor, crossed_areas=[])
     @begin_cursor = begin_cursor
     @end_cursor = end_cursor
     @width = @begin_cursor.width..@end_cursor.width
     @length = @begin_cursor.length..@end_cursor.length
-    @border_areas = border_areas
+    @crossed_areas = crossed_areas
     @name = '[%s, %s]' % [@width, @length]
   end
 
@@ -77,9 +77,9 @@ class Area
 
       @new_areas = determine_outside_vehicle_area(veh_area, self)
       @old_areas[@name] = self
-      @border_areas.each do |name|
+      @crossed_areas.each do |name|
         unless passed_areas.include?(name)
-          areas_hash[name].border_areas.delete(@name)
+          areas_hash[name].crossed_areas.delete(@name)
           areas_after_putting_vehicle = areas_hash[name].try_put_vehicle_in_cross_area(veh_area, areas_hash, passed_areas)
           if areas_after_putting_vehicle[:new_areas].empty?
             areas_after_putting_vehicle[:new_areas][name] = areas_hash[name]
