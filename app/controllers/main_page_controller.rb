@@ -141,7 +141,10 @@ class MainPageController < ApplicationController
     @areas.reset(areas[:new_areas], areas[:old_areas])
     while !@areas.empty? && @areas.any_fitted?(areas[:not_fitted_areas])
       areas = try_insert_vehicle(areas, veh)
-      @areas.reset(areas[:new_areas], areas[:old_areas]) if areas[:not_fitted_areas].empty?
+      if areas[:not_fitted_areas].empty?
+        @areas.reset(areas[:new_areas], areas[:old_areas])
+        set_areas(veh)
+      end
     end
   end
 
