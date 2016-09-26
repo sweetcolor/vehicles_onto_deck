@@ -115,9 +115,17 @@ class MainPageController < ApplicationController
     unless vehicle.exception_areas.empty?
       @areas_with_exception_height = Areas.new(@areas.areas_array, @parsed_query[:placement])
       vehicle.exception_areas.each do |exc_area|
-        area = @areas_with_exception_height.get_next
-        areas = area.try_put_vehicle_in_cross_area(exc_area, @areas_with_exception_height.areas_hash)
-        @areas_with_exception_height.reset(areas[:new_areas], areas[:old_areas])
+        # result_areas = { new_areas: Hash.new, old_areas: Hash.new }
+        until @areas_with_exception_height.empty?
+          area = @areas_with_exception_height.get_next
+          areas = area.try_put_vehicle_in_cross_area(exc_area, @areas_with_exception_height.areas_hash)
+          if !areas[:new_areas].empty? && !areas[:old_areas].empty?
+            # result_areas[:new_areas].merge! areas[:new_areas]
+            # result_areas[:old_areas].merge! areas[:old_areas]
+            @areas_with_exception_height.reset(areas[:new_areas], areas[:old_areas])
+          end
+        end
+        @areas.reset(Hash.new, Hash.new)
       end
       exchange_areas
       @areas.reset(Hash.new, Hash.new)
