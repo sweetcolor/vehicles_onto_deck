@@ -10,14 +10,14 @@ class Areas
 
   def reset(new_areas, old_areas)
     @areas_hash = @areas_hash.delete_if { |key| old_areas.has_key?(key) }.merge(new_areas)
-    find_border_area
+    find_crossed_areas
     keys = @areas_hash.keys
     keys.each do |key|
       @areas_hash[key].crossed_areas = sort_border_name_areas(
-          @areas_hash[key],
-          @areas_hash[key].crossed_areas.delete_if do |border_area_key|
-            !@areas_hash.has_key?(border_area_key)
-          end
+        @areas_hash[key],
+        @areas_hash[key].crossed_areas.delete_if do |border_area_key|
+          !@areas_hash.has_key?(border_area_key)
+        end
       )
     end
     @areas_array = @areas_hash.values
@@ -46,7 +46,7 @@ class Areas
 
   private
 
-  def find_border_area
+  def find_crossed_areas
     crossed_areas = Set.new
     @areas_hash.each_pair do |name_top, area_top|
       @areas_hash.each_pair do |name_sub, area_sub|
