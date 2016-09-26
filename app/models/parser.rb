@@ -85,13 +85,14 @@ class Parser
       else
         [:length, :width].zip([
                                   Range.new(*cell.scan(/[0-9]+/).map { |num| num.to_i - 1 }),
-                                  Range.new(*cell.scan(/[A-Z]+/).map { |str| convert_column_name_to_int(str) })
+                                  Range.new(*cell.scan(/[A-Z]+/).map { |str| excel_col_index(str) })
                               ]).to_h
       end
     end.each_slice(2).to_h
   end
 
-  def convert_column_name_to_int(name)
-    name.downcase.split('').map { |c| c.ord % 'a'.ord }.map.with_index { |pos, i| pos*10**i}.reduce(:+)
+  def excel_col_index( str )
+    offset = 'A'.ord - 1
+    str.chars.inject(0){ |x,c| x*26 + c.ord - offset }
   end
 end

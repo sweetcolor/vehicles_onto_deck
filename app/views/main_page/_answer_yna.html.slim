@@ -13,7 +13,7 @@
         - if @inserted_vehicles[name] == 1
           - vehicles_location[name].each do |range|
             td
-              | #{(range[:width].begin+'a'.ord).chr.upcase}#{range[:length].begin+1}..#{(range[:width].end+'a'.ord).chr.upcase}#{range[:length].end+1}
+              | #{index_to_excel_col(range[:width].begin+1)}#{range[:length].begin+1}..#{index_to_excel_col(range[:width].end+1)}#{range[:length].end+1}
         - else
           td
             | cannot fit
