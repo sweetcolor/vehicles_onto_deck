@@ -85,7 +85,7 @@ class Parser
       else
         [:length, :width].zip([
                                   Range.new(*cell.scan(/[0-9]+/).map { |num| num.to_i - 1 }),
-                                  Range.new(*cell.scan(/[A-Z]+/).map { |str| excel_col_index(str) })
+                                  Range.new(*cell.scan(/[A-Z]+/).map { |str| excel_col_index(str) - 1 })
                               ]).to_h
       end
     end.each_slice(2).to_h
