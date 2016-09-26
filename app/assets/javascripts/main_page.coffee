@@ -33,15 +33,15 @@
     colour = deck.lane_line.colour.join(',')
     line.css({ left: i*lane_width-1, top: 0, 'border-color': "rgb("+colour+")" })
 
-  draw_exception_color_area = (height, deck, cell) ->
-    c = $('#c'+height)
-    exc = deck.exception_colour[height]
+  draw_exception_color_area = (area, deck, cell) ->
+    exc = deck.exception_colour[area]
     width = exc.width.split("..").map((e)-> parseInt(e,10))
     beg_width = width[0]
     end_width = width[1]
     length = exc.length.split("..").map((e)-> parseInt(e,10))
     beg_length = length[0]
     end_length = length[1]
+    c = $('#c'+beg_width+'_'+end_width+'__'+beg_length+'_'+end_length)
     left = beg_width * cell.width
     top = beg_length * cell.height
     colour = exc.colour
@@ -65,7 +65,7 @@
     [1..deck.lane_line.column].forEach (i) ->
       draw_line(i, lane_width, deck, height_full)
 
-    Object.keys(deck.exception_colour).forEach (height) ->
-      draw_exception_color_area(height, deck, cell)
+    Object.keys(deck.exception_colour).forEach (area) ->
+      draw_exception_color_area(area, deck, cell)
   )
 )(jQuery)

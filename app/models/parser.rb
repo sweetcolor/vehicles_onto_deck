@@ -88,7 +88,7 @@ class Parser
                                   Range.new(*cell.scan(/[A-Z]+/).map { |str| convert_column_name_to_int(str) })
                               ]).to_h
       end
-    end.reverse.each_slice(2).to_h
+    end.each_slice(2).to_h
   end
 
   def convert_column_name_to_int(name)

@@ -1,6 +1,6 @@
 .vehicles-visual-table.vehicles
-  - deck.exception_colour.keys.each do |height|
-    .vehicles-visual-cell-colour id="c#{height}"
+  - deck.exception_colour.keys.each do |area|
+    .vehicles-visual-cell-colour id="c#{area[:width].begin}_#{area[:width].end}__#{area[:length].begin}_#{area[:length].end}"
       |
   - lane[:column].times do |i|
     .vehicles-visual-line id="l#{i}"

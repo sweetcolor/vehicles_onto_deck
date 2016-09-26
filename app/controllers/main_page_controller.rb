@@ -91,7 +91,7 @@ class MainPageController < ApplicationController
     @inserted_vehicles = @parsed_query[vehicle_type].reduce(@inserted_vehicles) { |h, v| h[v[:name]] = 0; h }
     @vehicles = remove_too_high_vehicle(@parsed_query[vehicle_type])
     @vehicles.each do |vehicle|
-      @parsed_query[:EX].each_pair do |exc_height, exc_range|
+      @parsed_query[:EX].each_pair do |exc_range, exc_height|
         if vehicle.height > exc_height
           exc_area = Area.new(
               CellCursor.new(exc_range[:width].begin, exc_range[:length].begin),

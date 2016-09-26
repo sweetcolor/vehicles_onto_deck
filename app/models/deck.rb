@@ -27,13 +27,13 @@ class Deck
   end
 
   def make_deck_cells(std_height, exception_height, vis)
-    @max_height = exception_height.empty? ? std_height : [std_height, exception_height.keys.max].max
+    @max_height = exception_height.empty? ? std_height : [std_height, exception_height.values.max].max
     @std_colour = @special_height_cell_colour[std_height][:colour] if vis && @special_height_cell_colour.include?(std_height)
     if vis
       exception_height.each_pair do |key, val|
-        if @special_height_cell_colour.include?(key)
-          @exception_colour[key] = val
-          @exception_colour[key][:colour] = @special_height_cell_colour[key][:colour]
+        if @special_height_cell_colour.include?(val)
+          @exception_colour[key] = { height: val }.merge(key)
+          @exception_colour[key][:colour] = @special_height_cell_colour[val][:colour]
         end
       end
     end
