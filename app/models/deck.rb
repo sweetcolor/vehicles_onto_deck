@@ -1,6 +1,5 @@
 class Deck
-  attr_reader :max_height, :length, :width, :vehicles_position, :vehicles_location, :lane_line,
-              :exception_colour, :std_colour
+  attr_reader :max_height, :length, :width, :vehicles_position, :lane_line, :exception_colour, :std_colour
   attr_accessor :special_height_cell_colour, :vehicles
 
   def initialize(length, width, lane_line)
@@ -9,8 +8,7 @@ class Deck
     @lane_line = lane_line
     @max_height = 0
 
-    @vehicles_position = Array.new
-    @vehicles_location = Hash.new
+    @vehicles_position = Hash.new
 
     @special_height_cell_colour = nil
     @vehicles = Set.new
@@ -47,10 +45,10 @@ class Deck
     veh_beg_cur = veh_area.begin_cursor
     veh_end_cur = veh_area.end_cursor
     range = {width: veh_beg_cur.width..veh_end_cur.width, length: veh_beg_cur.length..veh_end_cur.length }
-    @vehicles_location[vehicle.name] = Array.new unless @vehicles_location.has_key?(vehicle.name)
-    @vehicles_location[vehicle.name] << range
-    @vehicles_position << {vehicle: vehicle, area: veh_area, aligned_to_left: aligned_to_left(veh_area),
-                           aligned_to_top: aligned_to_top(veh_area) } if @vehicles.include?(vehicle.name)
+    @vehicles_position[vehicle.name] = {
+        vehicle: vehicle, area: veh_area, aligned_to_left: aligned_to_left(veh_area), range: range,
+        aligned_to_top: aligned_to_top(veh_area)
+    } if @vehicles.include?(vehicle.name)
   end
 
   def aligned_to_top(veh_area)

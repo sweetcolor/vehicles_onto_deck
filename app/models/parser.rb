@@ -18,19 +18,24 @@ class Parser
   private
 
   def parse_query
-    single_value_param = Set.new(%w{deck_width deck_length stdmax sort_order placement LL c})
+    without_underscore_param = Set.new(%w{deck_width deck_length stdmax sort_order placement LL c})
+    single_value_param = Set.new(%w{deck_width deck_length stdmax placement c})
+    int_array_param = Set.new(%w{LL})
     url_parameters_hash = Hash.new
     splitted_query = @query.split('~').map { |param| param.split('=') }
-    splitted_query.map! { |e| single_value_param.include?(e.first) ? e : e.map { |sub_e| sub_e.split('_') }.flatten }
+    splitted_query.map! { |e| without_underscore_param.include?(e.first) ? e : e.map { |sub_e| sub_e.split('_') }.flatten }
     splitted_query.each do |elem_query|
-      url_parameters_hash[elem_query.first.to_sym] = if !single_value_param.include?(elem_query.first) && !sv_param_key?(elem_query.first)
-                                                       elem_query[1..elem_query.length]
-                                                     else
-                                                       val = elem_query[elem_query.length-1].split(',').map do |e|
-                                                         e =~ /[0-9]/ ? e.to_i : e
-                                                       end
-                                                       val.length == 1 ? val.first : val
-                                                     end
+      key = elem_query.first
+      last = elem_query[elem_query.length-1]
+      url_parameters_hash[key.to_sym] = if single_value_param.include?(key)
+                                          last =~ /[0-9]/ ? last.to_i : last
+                                        elsif sv_param_key?(key) || int_array_param.include?(key)
+                                          last.split(',').map do |e|
+                                            e =~ /[0-9]/ ? e.to_i : e
+                                          end
+                                        else
+                                          elem_query.length > 2 ? elem_query[1..elem_query.length] : elem_query[1]
+                                        end
     end
     url_parameters_hash
   end
@@ -59,23 +64,24 @@ class Parser
   end
 
   def parse_real_vehicle
-    sort_vehicle create_vehicles_hash(@parsed_query[:rv].map { |v| v.split(',') }.map { |a| [a[0], a[1..3].map { |e| e.to_i }] })
+    sort_vehicle create_vehicles_hash(@parsed_query[:rv].map { |v| v.split(',') }.map { |a| [a[0], a[1...a.length].map { |e| e.to_i }] })
   end
 
   def create_vehicles_hash(vehicles_array)
-    vehicles_array.map { |a| Vehicle.new([:name, :width, :length, :height].zip([a[0], *a[1]]).to_h) }
+    vehicles_array.map { |a| Vehicle.new([:name, :stop, :width, :length, :height].zip([a[0], *a[1]]).to_h) }
   end
 
   def parse_sort_order
-    values = %w(L W H)
-    @parsed_query[:sort_order].insert(2, (values - @parsed_query[:sort_order][0..1]).first)
+    values = { S: :stop, L: :length, W: :width, H: :height }
+    @parsed_query[:sort_order].split(',').map do |e|
+      order = e.scan(/[0-9]+/).first.to_i
+      name = e.scan(/[A-Z]+/).first.to_s.to_sym
+      [values[name], order.zero? ? 1 : -1]
+    end
   end
 
   def sort_vehicle(vehicle)
-    values = { L: :length, W: :width, H: :height }
-    sort = @parsed_query[:sort_order][0..2].map { |order| values[order.to_s.to_sym] }
-    vehicle_sorted = vehicle.sort_by { |v| [v[sort[0]], v[sort[1]], v[sort[2]]] }
-    (@parsed_query[:sort_order][-1] == 1 ? vehicle_sorted.reverse : vehicle_sorted)
+    vehicle.sort_by { |v| @parsed_query[:sort_order].map { |s| s[1]*v[s[0]] } }
   end
 
   def parse_exception_cells

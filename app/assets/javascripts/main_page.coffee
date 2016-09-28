@@ -58,14 +58,14 @@
     width_full = wrapper.width()
     height_full = wrapper.height()
     cell = { width: width_full / deck.width, height: height_full / deck.length }
-    deck.vehicles_position.forEach (pos) ->
+    $.each deck.vehicles_position, (name, pos) ->
       draw_vehicle(pos, cell, deck)
 
     lane_width = width_full / (deck.lane_line.column+1)
     [1..deck.lane_line.column].forEach (i) ->
       draw_line(i, lane_width, deck, height_full)
 
-    Object.keys(deck.exception_colour).forEach (area) ->
+    $.each deck.exception_colour, (area) ->
       draw_exception_color_area(area, deck, cell)
   )
 )(jQuery)
