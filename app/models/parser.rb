@@ -60,7 +60,7 @@ class Parser
   end
 
   def parse_standard_vehicle
-    create_vehicles_hash(@parsed_query.select { |k| sv_param_key?(k)})
+    create_vehicles_hash(@parsed_query.select { |k| sv_param_key?(k) }.each_value { |e| e.unshift(1) })
   end
 
   def parse_real_vehicle
