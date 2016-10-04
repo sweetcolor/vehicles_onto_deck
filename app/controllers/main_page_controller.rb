@@ -74,7 +74,7 @@ class MainPageController < ApplicationController
     @parsed_query[:placement] = placement
     area = Area.new(CellCursor.new(0, 0), CellCursor.new(@deck.width-1, @deck.length-1))
     @areas = Areas.new([area], @parsed_query[:placement])
-    @areas_with_exception_height = @areas
+    @areas_original = @areas
     fit_vehicles_onto_deck(:rv, lambda { |*argv| insert_real_vehicle(*argv) })
     fit_vehicles_onto_deck(:SV, lambda { |*argv| insert_standard_vehicle(*argv) })
     @answer = get_answer
@@ -113,23 +113,22 @@ class MainPageController < ApplicationController
 
   def set_areas(vehicle)
     unless vehicle.exception_areas.empty?
-      @areas_with_exception_height = Areas.new(@areas.areas_array, @parsed_query[:placement])
+      @areas = Areas.new(@areas_original.areas_array, @parsed_query[:placement])
       vehicle.exception_areas.each do |exc_area|
-        # result_areas = { new_areas: Hash.new, old_areas: Hash.new }
-        until @areas_with_exception_height.empty?
-          area = @areas_with_exception_height.get_next
-          areas = area.try_put_vehicle_in_cross_area(exc_area, @areas_with_exception_height.areas_hash)
+        until @areas.empty?
+          area = @areas.get_next
+          areas = area.try_put_vehicle_in_cross_area(exc_area, @areas.areas_hash)
           if !areas[:new_areas].empty? || !areas[:old_areas].empty?
-            # result_areas[:new_areas].merge! areas[:new_areas]
-            # result_areas[:old_areas].merge! areas[:old_areas]
-            @areas_with_exception_height.reset(areas[:new_areas], areas[:old_areas])
+            @areas.reset(areas[:new_areas], areas[:old_areas])
           end
         end
-        @areas_with_exception_height.reset(Hash.new, Hash.new)
+        @areas.reset(Hash.new, Hash.new)
       end
-      exchange_areas
-      @areas.reset(Hash.new, Hash.new)
+      # exchange_areas
+    else
+      @areas = Areas.new(@areas_original.areas_array, @parsed_query[:placement])
     end
+    @areas.reset(Hash.new, Hash.new)
   end
 
   def exchange_areas
@@ -141,7 +140,7 @@ class MainPageController < ApplicationController
     while !@areas.empty? && @inserted_vehicles[veh.name].zero?
       areas = try_insert_vehicle(areas, veh)
     end
-    @areas.reset(areas[:new_areas], areas[:old_areas])
+    @areas_original.reset(areas[:new_areas], areas[:old_areas])
   end
 
   def insert_standard_vehicle(veh)
@@ -150,7 +149,7 @@ class MainPageController < ApplicationController
     while !@areas.empty? && @areas.any_fitted?(areas[:not_fitted_areas])
       areas = try_insert_vehicle(areas, veh)
       if areas[:not_fitted_areas].empty?
-        @areas.reset(areas[:new_areas], areas[:old_areas])
+        @areas_original.reset(areas[:new_areas], areas[:old_areas])
         set_areas(veh)
       end
     end
@@ -164,11 +163,11 @@ class MainPageController < ApplicationController
     if result_of_checking[:fitted]
       @deck.put_vehicle_onto_deck(veh, veh_area)
       unless veh.exception_areas.empty?
-        exchange_areas
-        @areas.reset(Hash.new, Hash.new)
-        area = @areas.find_area(area.begin_cursor)
+        # exchange_areas
+        @areas_original.reset(Hash.new, Hash.new)
+        area = @areas_original.find_area(area.begin_cursor)
       end
-      areas.merge! area.put_vehicle(veh_area, @areas.areas_hash)
+      areas.merge! area.put_vehicle(veh_area, @areas_original.areas_hash)
       @inserted_vehicles[veh.name] += 1
       areas[:not_fitted_areas].clear
     else
