@@ -84,7 +84,8 @@ class MainPageController < ApplicationController
     count_fitted = count_real_vehicle_fitted
     answer = count_fitted.zero? ? FALSE : TRUE
     all = @parsed_query[:rv].length == count_fitted ? TRUE : FALSE
-    { answer: answer, fitted_veh_count: count_fitted, all: all }
+    weight_limit_breached = weight_limit_exists? ? @parsed_query[:WL] > @parsed_query[:W] : false
+    { answer: answer, fitted_veh_count: count_fitted, all: all, wl_breached: weight_limit_breached }
   end
 
   def prepare_vehicle(vehicle_type)
@@ -112,7 +113,9 @@ class MainPageController < ApplicationController
   end
 
   def set_areas(vehicle)
-    unless vehicle.exception_areas.empty?
+    if vehicle.exception_areas.empty?
+      @areas = Areas.new(@areas_original.areas_array, @parsed_query[:placement])
+    else
       @areas = Areas.new(@areas_original.areas_array, @parsed_query[:placement])
       vehicle.exception_areas.each do |exc_area|
         until @areas.empty?
@@ -124,15 +127,8 @@ class MainPageController < ApplicationController
         end
         @areas.reset(Hash.new, Hash.new)
       end
-      # exchange_areas
-    else
-      @areas = Areas.new(@areas_original.areas_array, @parsed_query[:placement])
     end
     @areas.reset(Hash.new, Hash.new)
-  end
-
-  def exchange_areas
-    @areas, @areas_with_exception_height = @areas_with_exception_height, @areas
   end
 
   def insert_real_vehicle(veh)
@@ -163,7 +159,6 @@ class MainPageController < ApplicationController
     if result_of_checking[:fitted]
       @deck.put_vehicle_onto_deck(veh, veh_area)
       unless veh.exception_areas.empty?
-        # exchange_areas
         @areas_original.reset(Hash.new, Hash.new)
         area = @areas_original.find_area(area.begin_cursor)
       end
@@ -186,6 +181,10 @@ class MainPageController < ApplicationController
 
   def vis_answer?
     @parsed_query[:a].first == 'vis'
+  end
+
+  def weight_limit_exists?
+    @parsed_query.include?(:WL) && @parsed_query.include?(:W)
   end
 
   def b_placement?
