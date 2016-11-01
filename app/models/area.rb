@@ -44,37 +44,11 @@ class Area
     end
   end
 
-  def determine_vehicle_area(other_area)
-    width_begin_cover = @width.cover?(other_area.width.begin)
-    width_end_cover = @width.cover?(other_area.width.end)
-    length_begin_cover = @length.cover?(other_area.length.begin)
-    length_end_cover = @length.cover?(other_area.length.end)
-    width_begin = width_begin_cover ? other_area.width.begin : @width.begin
-    width_end = width_end_cover ? other_area.width.end : @width.end
-    length_begin = length_begin_cover ? other_area.length.begin : @length.begin
-    length_end = length_end_cover ? other_area.length.end : @length.end
-    return length_begin, length_end, width_begin, width_end
-  end
-
-  def remove_areas_crossing_veh_area(veh_area)
-    after_remove_areas = Hash.new
-    @new_areas.each_pair do |name, area|
-      if area.crossing?(veh_area)
-        new_areas = determine_outside_vehicle_area(veh_area, area)
-        after_remove_areas.merge!(new_areas)
-      else
-        after_remove_areas[name] = area
-      end
-    end
-    @new_areas = after_remove_areas
-  end
-
   def put_vehicle(veh_area, areas_hash, passed_areas=Set.new)
     @new_areas = Hash.new
     @old_areas = Hash.new
     unless passed_areas.include?(@name)
       passed_areas.add(@name)
-
       @new_areas = determine_outside_vehicle_area(veh_area, self)
       @old_areas[@name] = self
       @crossed_areas.each do |name|
@@ -96,6 +70,21 @@ class Area
     { new_areas: @new_areas, old_areas: @old_areas }
   end
 
+  private
+
+  def remove_areas_crossing_veh_area(veh_area)
+    after_remove_areas = Hash.new
+    @new_areas.each_pair do |name, area|
+      if area.crossing?(veh_area)
+        new_areas = determine_outside_vehicle_area(veh_area, area)
+        after_remove_areas.merge!(new_areas)
+      else
+        after_remove_areas[name] = area
+      end
+    end
+    @new_areas = after_remove_areas
+  end
+
   def determine_outside_vehicle_area(veh_area, area)
     new_areas = Hash.new
     veh_begin_cursor, veh_end_cursor = veh_area.begin_cursor, veh_area.end_cursor
@@ -115,7 +104,17 @@ class Area
     new_areas
   end
 
-  private
+  def determine_vehicle_area(other_area)
+    width_begin_cover = @width.cover?(other_area.width.begin)
+    width_end_cover = @width.cover?(other_area.width.end)
+    length_begin_cover = @length.cover?(other_area.length.begin)
+    length_end_cover = @length.cover?(other_area.length.end)
+    width_begin = width_begin_cover ? other_area.width.begin : @width.begin
+    width_end = width_end_cover ? other_area.width.end : @width.end
+    length_begin = length_begin_cover ? other_area.length.begin : @length.begin
+    length_end = length_end_cover ? other_area.length.end : @length.end
+    return length_begin, length_end, width_begin, width_end
+  end
 
   def push_new_area(new_areas, begin_cursor, end_cursor)
     new_area = Area.new(begin_cursor, end_cursor)
