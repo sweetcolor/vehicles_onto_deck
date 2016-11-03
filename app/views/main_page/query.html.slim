@@ -1,7 +1,11 @@
-- if @parsed_query[:a] == 'yn' || @parsed_query[:a].first == 'yn'
-  = render partial: 'main_page/answer_yn', locals: { answer: @answer }
-- if @parsed_query[:a] == 'yna' || @parsed_query[:a].first == 'yna'
-  = render partial: 'main_page/answer_yna', locals: { answer: @answer, vehicles_position: @deck.vehicles_position }
-- if @parsed_query[:a].first == 'vis'
-  .vehicles-location-float
-  = render partial: 'main_page/answer_vis', locals: { deck: @deck, position: @deck.vehicles_position, lane: @deck.lane_line }
+- unless @answer[:overwidth]
+  - if @parsed_query[:a] == 'yn' || @parsed_query[:a].first == 'yn'
+    = render partial: 'main_page/answer_yn', locals: { answer: @answer }
+  - if @parsed_query[:a] == 'yna' || @parsed_query[:a].first == 'yna'
+    = render partial: 'main_page/answer_yna', locals: { answer: @answer, vehicles_position: @deck.vehicles_position }
+  - if @parsed_query[:a].first == 'vis'
+    .vehicles-location-float
+    = render partial: 'main_page/answer_vis', locals: { deck: @deck, position: @deck.vehicles_position, lane: @deck.lane_line }
+- else
+  h3
+    | Sorry, this deck cannot be drawn because it contains overwidth units

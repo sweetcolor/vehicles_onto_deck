@@ -3,8 +3,13 @@ class MainPageController < ApplicationController
   end
 
   def query
+    @deck = nil
     @parsed_query = Parser.new(params[:query]).parse
-    draw_deck
+    if any_overwidth_vehicles
+      @answer = { overwidth: true }
+    else
+      draw_deck
+    end
     respond_to do |format|
       format.html
       format.json { render json: @deck }
@@ -12,6 +17,10 @@ class MainPageController < ApplicationController
   end
 
   private
+
+  def any_overwidth_vehicles
+    @parsed_query[:rv].any? { |veh| veh.width < 0 }
+  end
 
   def draw_deck
     reinitialize
@@ -86,7 +95,7 @@ class MainPageController < ApplicationController
     answer = count_fitted.zero? ? FALSE : TRUE
     all = @parsed_query[:rv].length == count_fitted ? TRUE : FALSE
     weight_limit_breached = weight_limit_exists? ? @parsed_query[:WL] > @parsed_query[:W] : false
-    { answer: answer, fitted_veh_count: count_fitted, all: all, wl_breached: weight_limit_breached }
+    { overwidth: false, answer: answer, fitted_veh_count: count_fitted, all: all, wl_breached: weight_limit_breached }
   end
 
   def prepare_vehicle(vehicle_type)
