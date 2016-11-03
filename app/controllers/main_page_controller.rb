@@ -44,6 +44,7 @@ class MainPageController < ApplicationController
 
   def reinitialize
     @inserted_vehicles = Hash.new
+    @b_double_count = 0
     @deck = Deck.new(@parsed_query[:deck_length], @parsed_query[:deck_width], @parsed_query[:LL])
     @deck.special_height_cell_colour = @parsed_query[:SHC]
     @deck.vehicles = @parsed_query[:rv].map { |v| v[:name] }.to_set
@@ -89,7 +90,10 @@ class MainPageController < ApplicationController
   end
 
   def prepare_vehicle(vehicle_type)
-    @inserted_vehicles = @parsed_query[vehicle_type].reduce(@inserted_vehicles) { |h, v| h[v[:name]] = 0; h }
+    @inserted_vehicles = @parsed_query[vehicle_type].reduce(@inserted_vehicles) do |h, v|
+      h[v[:name]] = { count: 0, b_double_rule: false }
+      h
+    end
     @vehicles = remove_too_high_vehicle(@parsed_query[vehicle_type])
     @vehicles.each do |vehicle|
       @parsed_query[:EX].each_pair do |exc_range, exc_height|
@@ -133,7 +137,7 @@ class MainPageController < ApplicationController
 
   def insert_real_vehicle(veh)
     areas = { new_areas: Hash.new, old_areas: Hash.new, not_fitted_areas: Set.new }
-    while !@areas.empty? && @inserted_vehicles[veh.name].zero?
+    while !@areas.empty? && @inserted_vehicles[veh.name][:count].zero?
       areas = try_insert_vehicle(areas, veh)
     end
     @areas_original.reset(areas[:new_areas], areas[:old_areas])
@@ -152,27 +156,31 @@ class MainPageController < ApplicationController
   end
 
   def try_insert_vehicle(areas, veh)
+    b_double = veh.length > @parsed_query[:BD][:length]
+    b_double_rule_true = b_double ? @b_double_count >= @parsed_query[:BD][:limit] : false
     area = @areas.get_next
     veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
     veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
     result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, area)
-    if result_of_checking[:fitted]
+    if result_of_checking[:fitted] && !b_double_rule_true
       @deck.put_vehicle_onto_deck(veh, veh_area)
       unless veh.exception_areas.empty?
         @areas_original.reset(Hash.new, Hash.new)
         area = @areas_original.find_area(area.begin_cursor)
       end
       areas.merge! area.put_vehicle(veh_area, @areas_original.areas_hash)
-      @inserted_vehicles[veh.name] += 1
+      @inserted_vehicles[veh.name][:count] += 1
+      @b_double_count += 1 if b_double
       areas[:not_fitted_areas].clear
     else
+      @inserted_vehicles[veh.name][:b_double_rule] = true if b_double_rule_true
       areas[:not_fitted_areas].add(area.name)
     end
     areas
   end
 
   def count_real_vehicle_fitted
-    @inserted_vehicles.slice(*@parsed_query[:rv].map { |v| v[:name] }).values.count { |s| !s.zero? }
+    @inserted_vehicles.slice(*@parsed_query[:rv].map { |v| v[:name] }).values.count { |s| !s[:count].zero? }
   end
 
   def remove_too_high_vehicle(vehicles)
