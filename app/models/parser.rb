@@ -19,8 +19,9 @@ class Parser
 
   def parse_query
     without_underscore_param = Set.new(%w{deck_width deck_length stdmax sort_order placement LL c})
-    single_value_param = Set.new(%w{deck_width deck_length stdmax placement c})
+    single_value_param = Set.new(%w{deck_width deck_length stdmax placement c W})
     int_array_param = Set.new(%w{LL})
+    weight_param = Set.new(%w{WL})
     url_parameters_hash = Hash.new
     splitted_query = @query.split('~').map { |param| param.split('=') }
     splitted_query.map! { |e| without_underscore_param.include?(e.first) ? e : e.map { |sub_e| sub_e.split('_') }.flatten }
@@ -33,6 +34,9 @@ class Parser
                                           last.split(',').map do |e|
                                             e =~ /[0-9]/ ? e.to_i : e
                                           end
+                                        elsif weight_param.include?(key)
+                                          splitted_query << elem_query[2..-1]
+                                          elem_query[1].to_i
                                         else
                                           elem_query.length > 2 ? elem_query[1..elem_query.length] : elem_query[1]
                                         end
