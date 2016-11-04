@@ -77,7 +77,7 @@ class Parser
   end
 
   def create_vehicles_hash(vehicles_array)
-    vehicles_array.map { |a| Vehicle.new([:name, :stop, :width, :length, :height].zip([a[0], *a[1]]).to_h) }
+    vehicles_array.map { |a| Vehicle.new([:name, :stop, :width, :length, :height, :UN].zip([a[0], *a[1]]).to_h) }
   end
 
   def parse_sort_order

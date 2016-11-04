@@ -5,8 +5,11 @@ class MainPageController < ApplicationController
   def query
     @deck = nil
     @parsed_query = Parser.new(params[:query]).parse
+    @types_of_dangerous = get_types_of_dangerous
     if any_overwidth_vehicles
       @answer = { overwidth: true }
+    elsif @types_of_dangerous.length  > 2
+      @answer = { too_many_types_of_dangerous: true }
     else
       draw_deck
     end
@@ -20,6 +23,14 @@ class MainPageController < ApplicationController
 
   def any_overwidth_vehicles
     @parsed_query[:rv].any? { |veh| veh.width < 0 }
+  end
+
+  def get_types_of_dangerous
+    types_of_dangerous = Array.new
+    @parsed_query[:rv].each do |vehicle|
+      types_of_dangerous.push(vehicle.un) unless vehicle.un.zero?
+    end
+    types_of_dangerous
   end
 
   def draw_deck
@@ -95,7 +106,8 @@ class MainPageController < ApplicationController
     answer = count_fitted.zero? ? FALSE : TRUE
     all = @parsed_query[:rv].length == count_fitted ? TRUE : FALSE
     weight_limit_breached = weight_limit_exists? ? @parsed_query[:WL] > @parsed_query[:W] : false
-    { overwidth: false, answer: answer, fitted_veh_count: count_fitted, all: all, wl_breached: weight_limit_breached }
+    { overwidth: false, answer: answer, fitted_veh_count: count_fitted, all: all, wl_breached: weight_limit_breached,
+      too_many_types_of_dangerous: false }
   end
 
   def prepare_vehicle(vehicle_type)
@@ -119,6 +131,11 @@ class MainPageController < ApplicationController
 
   def fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
     prepare_vehicle(vehicle_type)
+    if @types_of_dangerous.length == 2 && vehicle_type == :rv
+      dangerous_vehicles = @vehicles.select { |veh| @types_of_dangerous.include?(veh.un) }
+      dangerous_vehicles[1].right_corner = true
+      @vehicles = dangerous_vehicles + (@vehicles - dangerous_vehicles)
+    end
     @vehicles.each do |veh|
       set_areas(veh)
       vehicle_insert_func.call(veh)
@@ -168,7 +185,12 @@ class MainPageController < ApplicationController
     b_double = veh.length > @parsed_query[:BD][:length]
     b_double_rule_true = b_double ? @b_double_count >= @parsed_query[:BD][:limit] : false
     area = @areas.get_next
-    veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
+    if veh.right_corner
+      veh_begin_cursor, veh_end_cursor = CellCursor.new(area.end_cursor.width-veh.width+1, area.begin_cursor.length),
+          CellCursor.new(area.end_cursor.width, area.begin_cursor.length+veh.length-1)
+    else
+      veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
+    end
     veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
     result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, area)
     if result_of_checking[:fitted] && !b_double_rule_true
