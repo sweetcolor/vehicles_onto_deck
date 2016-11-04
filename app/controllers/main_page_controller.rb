@@ -79,10 +79,10 @@ class MainPageController < ApplicationController
       best_placement = 'LU'
     else
       @parsed_query[:SV].each do |std_veh|
-        if ul_inserted_vehicles[std_veh.name] > lu_inserted_vehicles[std_veh.name]
+        if ul_inserted_vehicles[std_veh.name][:count] > lu_inserted_vehicles[std_veh.name][:count]
           best_placement = 'UL'
           break
-        elsif ul_inserted_vehicles[std_veh.name] < lu_inserted_vehicles[std_veh.name]
+        elsif ul_inserted_vehicles[std_veh.name][:count] < lu_inserted_vehicles[std_veh.name][:count]
           best_placement = 'LU'
           break
         end
