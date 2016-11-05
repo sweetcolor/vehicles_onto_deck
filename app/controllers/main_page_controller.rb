@@ -26,9 +26,9 @@ class MainPageController < ApplicationController
   end
 
   def get_types_of_dangerous
-    types_of_dangerous = Array.new
+    types_of_dangerous = Set.new
     @parsed_query[:rv].each do |vehicle|
-      types_of_dangerous.push(vehicle.un) unless vehicle.un.zero?
+      types_of_dangerous.add(vehicle.un) unless vehicle.un.zero?
     end
     types_of_dangerous
   end
@@ -105,7 +105,7 @@ class MainPageController < ApplicationController
     count_fitted = count_real_vehicle_fitted
     answer = count_fitted.zero? ? FALSE : TRUE
     all = @parsed_query[:rv].length == count_fitted ? TRUE : FALSE
-    weight_limit_breached = weight_limit_exists? ? @parsed_query[:WL] > @parsed_query[:W] : false
+    weight_limit_breached = weight_limit_exists? ? @parsed_query[:W] > @parsed_query[:WL] : false
     { overwidth: false, answer: answer, fitted_veh_count: count_fitted, all: all, wl_breached: weight_limit_breached,
       too_many_types_of_dangerous: false }
   end
@@ -133,7 +133,8 @@ class MainPageController < ApplicationController
     prepare_vehicle(vehicle_type)
     if @types_of_dangerous.length == 2 && vehicle_type == :rv
       dangerous_vehicles = @vehicles.select { |veh| @types_of_dangerous.include?(veh.un) }
-      dangerous_vehicles[1].right_corner = true
+      right_corner = @types_of_dangerous.to_a[1]
+      dangerous_vehicles.map { |dang_veh| dang_veh.right_corner = true if dang_veh.un == right_corner }
       @vehicles = dangerous_vehicles + (@vehicles - dangerous_vehicles)
     end
     @vehicles.each do |veh|
