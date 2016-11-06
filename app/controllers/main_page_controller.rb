@@ -6,11 +6,16 @@ class MainPageController < ApplicationController
     @deck = nil
     @parsed_query = Parser.new(params[:query]).parse
     @types_of_dangerous = get_types_of_dangerous
+    @dangerous_vehicles = total_dangerous_goods
     if any_overwidth_vehicles
       @answer = { overwidth: true }
-    elsif @types_of_dangerous.length  > 2
+    elsif @types_of_dangerous.length > 2 || @dangerous_vehicles.length > 2 && @types_of_dangerous.length == 2
       @answer = { too_many_types_of_dangerous: true }
     else
+      if @types_of_dangerous.length == 2
+        @dangerous_vehicles[1].right_corner = true
+        @parsed_query[:rv] = @dangerous_vehicles + (@parsed_query[:rv] - @dangerous_vehicles)
+      end
       draw_deck
     end
     respond_to do |format|
@@ -31,6 +36,14 @@ class MainPageController < ApplicationController
       types_of_dangerous.add(vehicle.un) unless vehicle.un.zero?
     end
     types_of_dangerous
+  end
+
+  def total_dangerous_goods
+    if @types_of_dangerous.length <= 2
+      @parsed_query[:rv].select { |veh| @types_of_dangerous.include?(veh.un) }
+    else
+      Array.new
+    end
   end
 
   def draw_deck
@@ -131,12 +144,6 @@ class MainPageController < ApplicationController
 
   def fit_vehicles_onto_deck(vehicle_type, vehicle_insert_func)
     prepare_vehicle(vehicle_type)
-    if @types_of_dangerous.length == 2 && vehicle_type == :rv
-      dangerous_vehicles = @vehicles.select { |veh| @types_of_dangerous.include?(veh.un) }
-      right_corner = @types_of_dangerous.to_a[1]
-      dangerous_vehicles.map { |dang_veh| dang_veh.right_corner = true if dang_veh.un == right_corner }
-      @vehicles = dangerous_vehicles + (@vehicles - dangerous_vehicles)
-    end
     @vehicles.each do |veh|
       set_areas(veh)
       vehicle_insert_func.call(veh)
