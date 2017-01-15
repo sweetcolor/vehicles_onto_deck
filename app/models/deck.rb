@@ -38,7 +38,8 @@ class Deck
   end
 
   def check_fit_vehicle_onto_deck(vehicle, area)
-    { fitted: area.length.size >= vehicle.length && area.width.size >= vehicle.width }
+    { fitted: area.length.size >= vehicle.length && area.width.size >= vehicle.width &&
+        (area.only_for_lower_stop.nil? ? true : vehicle.stop <= area.only_for_lower_stop) }
   end
 
   def put_vehicle_onto_deck(vehicle, veh_area)

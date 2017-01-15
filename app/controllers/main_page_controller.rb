@@ -26,26 +26,6 @@ class MainPageController < ApplicationController
 
   private
 
-  def any_overwidth_vehicles
-    @parsed_query[:rv].any? { |veh| veh.width < 0 }
-  end
-
-  def get_types_of_dangerous
-    types_of_dangerous = Set.new
-    @parsed_query[:rv].each do |vehicle|
-      types_of_dangerous.add(vehicle.un) unless vehicle.un.zero?
-    end
-    types_of_dangerous
-  end
-
-  def total_dangerous_goods
-    if @types_of_dangerous.length <= 2
-      @parsed_query[:rv].select { |veh| @types_of_dangerous.include?(veh.un) }
-    else
-      Array.new
-    end
-  end
-
   def draw_deck
     reinitialize
     if b_placement?
@@ -199,7 +179,7 @@ class MainPageController < ApplicationController
     else
       veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
     end
-    veh_area = Area.new(veh_begin_cursor, veh_end_cursor)
+    veh_area = Area.new(veh_begin_cursor, veh_end_cursor, veh.stop - 1)
     result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, area)
     if result_of_checking[:fitted] && !b_double_rule_true
       @deck.put_vehicle_onto_deck(veh, veh_area)
@@ -216,6 +196,26 @@ class MainPageController < ApplicationController
       areas[:not_fitted_areas].add(area.name)
     end
     areas
+  end
+
+  def any_overwidth_vehicles
+    @parsed_query[:rv].any? { |veh| veh.width < 0 }
+  end
+
+  def get_types_of_dangerous
+    types_of_dangerous = Set.new
+    @parsed_query[:rv].each do |vehicle|
+      types_of_dangerous.add(vehicle.un) unless vehicle.un.zero?
+    end
+    types_of_dangerous
+  end
+
+  def total_dangerous_goods
+    if @types_of_dangerous.length <= 2
+      @parsed_query[:rv].select { |veh| @types_of_dangerous.include?(veh.un) }
+    else
+      Array.new
+    end
   end
 
   def count_real_vehicle_fitted
