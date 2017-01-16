@@ -179,7 +179,7 @@ class MainPageController < ApplicationController
     else
       veh_begin_cursor, veh_end_cursor = area.begin_cursor, area.begin_cursor + CellCursor.new(veh.width-1, veh.length-1)
     end
-    veh_area = Area.new(veh_begin_cursor, veh_end_cursor, veh.stop - 1)
+    veh_area = Area.new(veh_begin_cursor, veh_end_cursor, veh.stop)
     result_of_checking = @deck.check_fit_vehicle_onto_deck(veh, area)
     if result_of_checking[:fitted] && !b_double_rule_true
       @deck.put_vehicle_onto_deck(veh, veh_area)
