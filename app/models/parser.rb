@@ -11,6 +11,7 @@ class Parser
     @parsed_query[:SV] = parse_standard_vehicle
     @parsed_query[:EX] = @parsed_query.include?(:EX) ? parse_exception_cells : Hash.new
     @parsed_query[:LL] = parse_lane_line
+    @parsed_query[:BD] = parse_b_double_vehicles
     @parsed_query[:SHC] = special_height_cell_colour
     @parsed_query
   end
@@ -20,7 +21,7 @@ class Parser
   def parse_query
     without_underscore_param = Set.new(%w{deck_width deck_length stdmax sort_order placement LL c})
     single_value_param = Set.new(%w{deck_width deck_length stdmax placement c W})
-    int_array_param = Set.new(%w{LL})
+    int_array_param = Set.new(%w{LL BD})
     weight_param = Set.new(%w{WL})
     url_parameters_hash = Hash.new
     splitted_query = @query.split('~').map { |param| param.split('=') }
@@ -52,6 +53,10 @@ class Parser
     { column: @parsed_query[:LL][0], colour: @parsed_query[:LL][1..-1] }
   end
 
+  def parse_b_double_vehicles
+    [:length, :limit].zip(@parsed_query.include?(:BD) ? @parsed_query[:BD] : [@parsed_query[:deck_length]+1, 0]).to_h
+  end
+
   def special_height_cell_colour
     if @parsed_query[:a].first == 'vis'
       shc = Hash.new
@@ -72,7 +77,7 @@ class Parser
   end
 
   def create_vehicles_hash(vehicles_array)
-    vehicles_array.map { |a| Vehicle.new([:name, :stop, :width, :length, :height].zip([a[0], *a[1]]).to_h) }
+    vehicles_array.map { |a| Vehicle.new([:name, :stop, :width, :length, :height, :UN].zip([a[0], *a[1]]).to_h) }
   end
 
   def parse_sort_order
