@@ -14,19 +14,19 @@
           = vehicle.name
         td
           = vehicle.stop
-        - if @inserted_vehicles[vehicle.name] == 1
+        - if @inserted_vehicles[vehicle.name][:count] == 1
           - range = vehicles_position[vehicle.name][:range]
           td
             | #{index_to_excel_col(range[:width].begin+1)}#{range[:length].begin+1}..#{index_to_excel_col(range[:width].end+1)}#{range[:length].end+1}
         - else
           td
-            | cannot fit
+            | Cannot fit#{', B-Double Rule' if @inserted_vehicles[vehicle.name][:b_double_rule]}
     - @parsed_query[:SV].each do |veh|
       tr
         td colspan="2"
           - num = veh[:name].to_s.gsub(/[a-z]/, '')
           | Additional Standard Vehicles (Type #{num.empty? ? 1 : num.to_i})
         td
-          = @inserted_vehicles[veh[:name]]
+          = @inserted_vehicles[veh[:name]][:count]
 - else
   h3 No they can’t fit

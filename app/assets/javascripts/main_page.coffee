@@ -53,6 +53,8 @@
     })
 
   ajax.done((deck) ->
+    if !deck
+      return 0
     wrapper = $(".vehicles-visual-table")
     wrapper.css("background-color", "rgb("+deck.std_colour.join(',')+")")
     width_full = wrapper.width()

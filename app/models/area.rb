@@ -1,12 +1,13 @@
 class Area
-  attr_accessor :begin_cursor, :end_cursor, :crossed_areas, :fitted_sides, :length, :width, :name
+  attr_accessor :begin_cursor, :end_cursor, :crossed_areas, :fitted_sides, :length, :width, :name, :only_for_lower_stop
 
-  def initialize(begin_cursor, end_cursor, crossed_areas=[])
+  def initialize(begin_cursor, end_cursor, only_for_lower_stop=nil)
     @begin_cursor = begin_cursor
     @end_cursor = end_cursor
     @width = @begin_cursor.width..@end_cursor.width
     @length = @begin_cursor.length..@end_cursor.length
-    @crossed_areas = crossed_areas
+    @crossed_areas = []
+    @only_for_lower_stop = only_for_lower_stop
     @name = '[%s, %s]' % [@width, @length]
   end
 
@@ -37,8 +38,9 @@ class Area
   def try_put_vehicle_in_cross_area(veh_area, areas_hash, passed_areas=Set.new)
     if crossing?(veh_area)
       length_begin, length_end, width_begin, width_end = determine_vehicle_area(veh_area)
-      veh_area = Area.new(CellCursor.new(width_begin, length_begin), CellCursor.new(width_end, length_end))
-      put_vehicle(veh_area, areas_hash, passed_areas)
+      sub_veh_area = Area.new(CellCursor.new(width_begin, length_begin), CellCursor.new(width_end, length_end),
+                          veh_area.only_for_lower_stop)
+      put_vehicle(sub_veh_area, areas_hash, passed_areas)
     else
       { new_areas: Hash.new, old_areas: Hash.new }
     end
@@ -89,17 +91,22 @@ class Area
     new_areas = Hash.new
     veh_begin_cursor, veh_end_cursor = veh_area.begin_cursor, veh_area.end_cursor
     area_begin_cursor, area_end_cursor  = area.begin_cursor, area.end_cursor
-    if veh_begin_cursor.width > area_begin_cursor.width
-      push_new_area(new_areas, area_begin_cursor.deep_dup, CellCursor.new(veh_begin_cursor.width-1, area_end_cursor.length))
+    if veh_begin_cursor.width > area_begin_cursor.width # left
+      push_new_area(new_areas, area_begin_cursor.deep_dup,
+                    CellCursor.new(veh_begin_cursor.width-1, area_end_cursor.length), area.only_for_lower_stop)
     end
-    if veh_end_cursor.length < area_end_cursor.length
-      push_new_area(new_areas, CellCursor.new(area_begin_cursor.width, veh_end_cursor.length+1), area_end_cursor.deep_dup)
+    if veh_end_cursor.length < area_end_cursor.length # bottom
+      push_new_area(new_areas, CellCursor.new(area_begin_cursor.width, veh_end_cursor.length+1),
+                    area_end_cursor.deep_dup, area.only_for_lower_stop)
     end
-    if veh_end_cursor.width < area_end_cursor.width
-      push_new_area(new_areas, CellCursor.new(veh_end_cursor.width+1, area_begin_cursor.length), area_end_cursor.deep_dup)
+    if veh_end_cursor.width < area_end_cursor.width # right
+      push_new_area(new_areas, CellCursor.new(veh_end_cursor.width+1, area_begin_cursor.length),
+                    area_end_cursor.deep_dup, area.only_for_lower_stop)
     end
-    if veh_begin_cursor.length > area_begin_cursor.length
-      push_new_area(new_areas, area_begin_cursor.deep_dup, CellCursor.new(area_end_cursor.width, veh_begin_cursor.length-1))
+    if veh_begin_cursor.length > area_begin_cursor.length # top
+      push_new_area(new_areas, area_begin_cursor.deep_dup,
+                    CellCursor.new(area_end_cursor.width, veh_begin_cursor.length-1),
+                    veh_area.only_for_lower_stop || area.only_for_lower_stop)
     end
     new_areas
   end
@@ -116,8 +123,8 @@ class Area
     return length_begin, length_end, width_begin, width_end
   end
 
-  def push_new_area(new_areas, begin_cursor, end_cursor)
-    new_area = Area.new(begin_cursor, end_cursor)
+  def push_new_area(new_areas, begin_cursor, end_cursor, stop=nil)
+    new_area = Area.new(begin_cursor, end_cursor, stop)
     new_areas[new_area.name] = new_area
   end
 

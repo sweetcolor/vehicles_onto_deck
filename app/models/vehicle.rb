@@ -1,5 +1,5 @@
 class Vehicle
-  attr_accessor :name, :width, :length, :height, :stop, :exception_areas
+  attr_accessor :name, :width, :length, :height, :stop, :un, :exception_areas, :right_corner
 
   def initialize(hash)
     @vehicle_hash = hash
@@ -8,6 +8,8 @@ class Vehicle
     @length = hash[:length]
     @height = hash[:height]
     @stop = hash[:stop]
+    @un = hash[:UN]
+    @right_corner = false
     @exception_areas = Array.new
   end
 
